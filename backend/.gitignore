@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+
+# Databases
+*.sqlite
+*.db
+prisma/migrations/
+
+# OS
+.DS_Store
+Thumbs.db
