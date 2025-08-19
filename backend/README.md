@@ -105,5 +105,8 @@ Prisma client should be regenerated after updating the schema:
 npx prisma generate
 ```
 
-I can also help you add a **Usage Examples** section and a **Contribution Guide** if you want your README to be more user-friendly and complete. Do you want me to do that next?
+This version uses proper **headings**, **code blocks**, **lists**, and **horizontal rules** to make it look professional in GitHub or any Markdown viewer.  
+
+If you want, I can **also add badges** (like Node version, license, build status) to make it look even more “standard” for open-source projects. Do you want me to do that?
+
 ---
