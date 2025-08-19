@@ -1,1 +1,1 @@
-//React pages should be replaced here
+//React static pages should be replaced here
