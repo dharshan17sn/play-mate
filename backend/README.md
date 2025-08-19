@@ -5,6 +5,7 @@ This is the backend service for **Playmate**. It is built using **Node.js**, **E
 ---
 
 ## 📂 Project Structure
+```bash
 backend/
 │── node_modules/ # Installed dependencies
 │── prisma/
@@ -18,6 +19,7 @@ backend/
 │── package.json # Project metadata & dependencies
 │── package-lock.json # Dependency lock file
 
+```
 
 ---
 
