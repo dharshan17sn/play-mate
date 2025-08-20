@@ -1,1 +1,41 @@
+// Prisma schema for Playmate MVP
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  email         String          @unique
+  passwordHash  String?
+  name          String?
+  city          String?
+  emailVerifiedAt DateTime?
+  provider      String?
+  providerId    String?
+  otpHash       String?
+  otpExpiresAt  DateTime?
+
+  gameInterests GameInterest[]
+
+  @@index([provider, providerId])
+}
+
+model GameInterest {
+  id     Int    @id @default(autoincrement())
+  name   String
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([name])
+}
+
 //ORM will be written here
