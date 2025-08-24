@@ -1,7 +1,10 @@
-// Prisma schema for Playmate MVP
-
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
 }
 
 datasource db {
@@ -9,33 +12,150 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//
+// ENUMS
+//
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum TeamMemberStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+//
+// MODELS
+//
 model User {
-  id            Int             @id @default(autoincrement())
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  email         String          @unique
-  passwordHash  String?
-  name          String?
-  city          String?
-  emailVerifiedAt DateTime?
-  provider      String?
-  providerId    String?
-  otpHash       String?
-  otpExpiresAt  DateTime?
+  id           String  @id @default(uuid())
+  name         String
+  email        String  @unique
+  photo        String?
+  gender       String?
+  passwordHash String
+  location     String?
 
-  gameInterests GameInterest[]
+  // relations
+  teams               TeamMember[]
+  invitationsSent     Invitation[]     @relation("InvitationsSent")
+  invitationsReceived Invitation[]     @relation("InvitationsReceived")
+  tournaments         TournamentTeam[] @relation("UserTournamentTeams")
+  preferredGames      UserGame[]
+  messages            Message[]
 
-  @@index([provider, providerId])
+  // teams/tournaments created by user
+  createdTeams       Team[]       @relation("TeamCreator")
+  createdTournaments Tournament[] @relation("TournamentCreator")
 }
 
-model GameInterest {
-  id     Int    @id @default(autoincrement())
-  name   String
-  userId Int
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([name])
+model Game {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  teams       Team[]
+  users       UserGame[]
+  tournaments Tournament[]
 }
 
-//ORM will be written here
+model Team {
+  id          String  @id @default(uuid())
+  title       String
+  photo       String?
+  description String?
+
+  creatorId String
+  creator   User   @relation("TeamCreator", fields: [creatorId], references: [id])
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  members     TeamMember[]
+  tournaments TournamentTeam[]
+  invitations Invitation[]
+  messages    Message[]
+}
+
+model TeamMember {
+  id       String           @id @default(uuid())
+  userId   String
+  teamId   String
+  status   TeamMemberStatus @default(PENDING)
+  joinedAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId]) // Prevent duplicate membership
+}
+
+model Tournament {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  creatorId String
+  creator   User   @relation("TournamentCreator", fields: [creatorId], references: [id])
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  photo     String?
+  startDate DateTime
+  location  String
+
+  teams    TournamentTeam[]
+  messages Message[]
+}
+
+model TournamentTeam {
+  id           String   @id @default(uuid())
+  tournamentId String
+  teamId       String
+  registeredAt DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  team       Team       @relation(fields: [teamId], references: [id])
+  users      User[]     @relation("UserTournamentTeams")
+
+  @@unique([tournamentId, teamId]) // Prevent duplicate registration
+}
+
+model Invitation {
+  id         String           @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  teamId     String
+  status     InvitationStatus @default(PENDING)
+  sentAt     DateTime         @default(now())
+
+  fromUser User @relation("InvitationsSent", fields: [fromUserId], references: [id])
+  toUser   User @relation("InvitationsReceived", fields: [toUserId], references: [id])
+  team     Team @relation(fields: [teamId], references: [id])
+}
+
+model UserGame {
+  id     String @id @default(uuid())
+  userId String
+  gameId String
+
+  user User @relation(fields: [userId], references: [id])
+  game Game @relation(fields: [gameId], references: [id])
+
+  @@unique([userId, gameId]) // Prevent duplicate preferences
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  senderId     String
+  teamId       String?
+  tournamentId String?
+  content      String
+  sentAt       DateTime @default(now())
+
+  sender     User        @relation(fields: [senderId], references: [id])
+  team       Team?       @relation(fields: [teamId], references: [id])
+  tournament Tournament? @relation(fields: [tournamentId], references: [id])
+}
