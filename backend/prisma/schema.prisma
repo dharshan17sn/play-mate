@@ -3,9 +3,6 @@ generator client {
   output   = "../generated/prisma"
 }
 
-generator erd {
-  provider = "prisma-erd-generator"
-}
 
 datasource db {
   provider = "postgresql"
@@ -31,8 +28,8 @@ enum TeamMemberStatus {
 // MODELS
 //
 model User {
-  id           String  @id @default(uuid())
-  name         String
+  user_id      String  @id @unique
+  displayName  String
   email        String  @unique
   photo        String?
   gender       String?
@@ -67,7 +64,7 @@ model Team {
   description String?
 
   creatorId String
-  creator   User   @relation("TeamCreator", fields: [creatorId], references: [id])
+  creator   User   @relation("TeamCreator", fields: [creatorId], references: [user_id])
 
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
@@ -85,7 +82,7 @@ model TeamMember {
   status   TeamMemberStatus @default(PENDING)
   joinedAt DateTime         @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [user_id])
   team Team @relation(fields: [teamId], references: [id])
 
   @@unique([userId, teamId]) // Prevent duplicate membership
@@ -97,7 +94,7 @@ model Tournament {
   description String?
 
   creatorId String
-  creator   User   @relation("TournamentCreator", fields: [creatorId], references: [id])
+  creator   User   @relation("TournamentCreator", fields: [creatorId], references: [user_id])
 
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
@@ -131,8 +128,8 @@ model Invitation {
   status     InvitationStatus @default(PENDING)
   sentAt     DateTime         @default(now())
 
-  fromUser User @relation("InvitationsSent", fields: [fromUserId], references: [id])
-  toUser   User @relation("InvitationsReceived", fields: [toUserId], references: [id])
+  fromUser User @relation("InvitationsSent", fields: [fromUserId], references: [user_id])
+  toUser   User @relation("InvitationsReceived", fields: [toUserId], references: [user_id])
   team     Team @relation(fields: [teamId], references: [id])
 }
 
@@ -141,7 +138,7 @@ model UserGame {
   userId String
   gameId String
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [user_id])
   game Game @relation(fields: [gameId], references: [id])
 
   @@unique([userId, gameId]) // Prevent duplicate preferences
@@ -155,7 +152,7 @@ model Message {
   content      String
   sentAt       DateTime @default(now())
 
-  sender     User        @relation(fields: [senderId], references: [id])
+  sender     User        @relation(fields: [senderId], references: [user_id])
   team       Team?       @relation(fields: [teamId], references: [id])
   tournament Tournament? @relation(fields: [tournamentId], references: [id])
 }

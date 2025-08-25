@@ -7,9 +7,9 @@ import { logger } from '../utils/logger';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
+    user_id: string;
     email: string;
-    name: string;
+    displayName: string;
   };
 }
 
@@ -34,8 +34,8 @@ export const authenticateToken = async (
 
     // Verify user still exists in database
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, name: true },
+      where: { user_id: decoded.userId },
+      select: { user_id: true, email: true, displayName: true },
     });
 
     if (!user) {
@@ -69,8 +69,8 @@ export const requireRole = (roles: string[]) => {
       // For now, we'll implement basic role checking
       // You can extend this based on your role system
       const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: { id: true },
+        where: { user_id: req.user.user_id },
+        select: { user_id: true },
       });
 
       if (!user) {
@@ -100,8 +100,8 @@ export const optionalAuth = async (
       
       if (decoded.userId) {
         const user = await prisma.user.findUnique({
-          where: { id: decoded.userId },
-          select: { id: true, email: true, name: true },
+          where: { user_id: decoded.userId },
+          select: { user_id: true, email: true, displayName: true },
         });
 
         if (user) {

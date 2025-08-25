@@ -8,6 +8,7 @@ import {
   userUpdateSchema,
   paginationSchema,
   searchSchema,
+  userSearchSchema,
   idParamSchema,
 } from '../middleware/validation';
 
@@ -22,13 +23,14 @@ router.get('/profile', authenticateToken, UserController.getProfile);
 router.put('/profile', authenticateToken, validateRequest(userUpdateSchema), UserController.updateProfile);
 router.get('/teams', authenticateToken, UserController.getMyTeams);
 router.put('/change-password', authenticateToken, UserController.changePassword);
-router.delete('/:id', authenticateToken, validateRequest(idParamSchema), UserController.deleteUser);
+router.delete('/:user_id', authenticateToken, validateRequest(idParamSchema), UserController.deleteUser);
 
 // Public routes with optional authentication
-router.get('/:id', validateRequest(idParamSchema), UserController.getUserById);
-router.get('/:id/teams', validateRequest(idParamSchema), UserController.getUserWithTeams);
+router.get('/:user_id', validateRequest(idParamSchema), UserController.getUserById);
+router.get('/:user_id/teams', validateRequest(idParamSchema), UserController.getUserWithTeams);
 
 // Admin/Public routes
-router.get('/', validateRequest(paginationSchema), validateRequest(searchSchema), UserController.getUsers);
+router.get('/', validateRequest(paginationSchema), validateRequest(userSearchSchema), UserController.getUsers);
+router.get('/search', validateRequest(userSearchSchema), UserController.searchUsers);
 
 export default router;

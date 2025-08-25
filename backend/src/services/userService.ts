@@ -11,7 +11,8 @@ import {
 import { logger } from '../utils/logger';
 
 export interface CreateUserData {
-  name: string;
+  user_id: string;
+  displayName: string;
   email: string;
   password: string;
   gender?: string;
@@ -19,19 +20,19 @@ export interface CreateUserData {
 }
 
 export interface UpdateUserData {
-  name?: string;
+  displayName?: string;
   photo?: string;
   gender?: string;
   location?: string;
 }
 
 export interface UserWithTeams {
-  id: string;
-  name: string;
+  user_id: string;
+  displayName: string;
   email: string;
-  photo?: string;
-  gender?: string;
-  location?: string;
+  photo?: string | null;
+  gender?: string | null;
+  location?: string | null;
   teams: Array<{
     id: string;
     title: string;
@@ -46,13 +47,27 @@ export class UserService {
    */
   static async createUser(data: CreateUserData) {
     try {
-      // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
+      // Check if user already exists by email or user_id
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: data.email },
+            { user_id: data.user_id },
+            { displayName: data.displayName }
+          ]
+        },
       });
 
       if (existingUser) {
-        throw new ConflictError('User with this email already exists');
+        if (existingUser.email === data.email) {
+          throw new ConflictError('User with this email already exists');
+        }
+        if (existingUser.user_id === data.user_id) {
+          throw new ConflictError('User ID already taken');
+        }
+        if (existingUser.displayName === data.displayName) {
+          throw new ConflictError('Display name already taken');
+        }
       }
 
       // Hash password
@@ -62,12 +77,16 @@ export class UserService {
       // Create user
       const user = await prisma.user.create({
         data: {
-          ...data,
+          user_id: data.user_id,
+          displayName: data.displayName,
+          email: data.email,
+          gender: data.gender,
+          location: data.location,
           passwordHash: hashedPassword,
         },
         select: {
-          id: true,
-          name: true,
+          user_id: true,
+          displayName: true,
           email: true,
           photo: true,
           gender: true,
@@ -92,10 +111,10 @@ export class UserService {
       const user = await prisma.user.findUnique({
         where: { email },
         select: {
-          id: true,
+          user_id: true,
           email: true,
           passwordHash: true,
-          name: true,
+          displayName: true,
         },
       });
 
@@ -111,17 +130,16 @@ export class UserService {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id },
-        config.jwt.secret,
-        { expiresIn: config.jwt.expiresIn }
+        { userId: user.user_id },
+        config.jwt.secret as string,
       );
 
       logger.info(`User authenticated: ${user.email}`);
       return {
         user: {
-          id: user.id,
+          user_id: user.user_id,
           email: user.email,
-          name: user.name,
+          displayName: user.displayName,
         },
         token,
       };
@@ -132,15 +150,15 @@ export class UserService {
   }
 
   /**
-   * Get user by ID
+   * Get user by user_id
    */
-  static async getUserById(id: string) {
+  static async getUserById(user_id: string) {
     try {
       const user = await prisma.user.findUnique({
-        where: { id },
+        where: { user_id },
         select: {
-          id: true,
-          name: true,
+          user_id: true,
+          displayName: true,
           email: true,
           photo: true,
           gender: true,
@@ -154,7 +172,7 @@ export class UserService {
 
       return user;
     } catch (error) {
-      logger.error(`Error getting user by ID ${id}:`, error);
+      logger.error(`Error getting user by user_id ${user_id}:`, error);
       throw error;
     }
   }
@@ -162,14 +180,14 @@ export class UserService {
   /**
    * Update user
    */
-  static async updateUser(id: string, data: UpdateUserData) {
+  static async updateUser(user_id: string, data: UpdateUserData) {
     try {
       const user = await prisma.user.update({
-        where: { id },
+        where: { user_id },
         data,
         select: {
-          id: true,
-          name: true,
+          user_id: true,
+          displayName: true,
           email: true,
           photo: true,
           gender: true,
@@ -180,7 +198,7 @@ export class UserService {
       logger.info(`User updated: ${user.email}`);
       return user;
     } catch (error) {
-      logger.error(`Error updating user ${id}:`, error);
+      logger.error(`Error updating user ${user_id}:`, error);
       throw error;
     }
   }
@@ -188,13 +206,13 @@ export class UserService {
   /**
    * Get user with teams
    */
-  static async getUserWithTeams(id: string): Promise<UserWithTeams> {
+  static async getUserWithTeams(user_id: string): Promise<UserWithTeams> {
     try {
       const user = await prisma.user.findUnique({
-        where: { id },
+        where: { user_id },
         select: {
-          id: true,
-          name: true,
+          user_id: true,
+          displayName: true,
           email: true,
           photo: true,
           gender: true,
@@ -221,7 +239,12 @@ export class UserService {
 
       // Transform the data to match the interface
       const transformedUser: UserWithTeams = {
-        ...user,
+        user_id: user.user_id,
+        displayName: user.displayName,
+        email: user.email,
+        photo: user.photo,
+        gender: user.gender,
+        location: user.location,
         teams: user.teams.map(tm => ({
           id: tm.team.id,
           title: tm.team.title,
@@ -232,7 +255,7 @@ export class UserService {
 
       return transformedUser;
     } catch (error) {
-      logger.error(`Error getting user with teams ${id}:`, error);
+      logger.error(`Error getting user with teams ${user_id}:`, error);
       throw error;
     }
   }
@@ -240,23 +263,33 @@ export class UserService {
   /**
    * Get users with pagination and search
    */
-  static async getUsers(page: number = 1, limit: number = 10, search?: string) {
+  static async getUsers(page: number = 1, limit: number = 10, search?: string, user_id?: string, displayName?: string) {
     try {
       const skip = (page - 1) * limit;
       
-      const where = search ? {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' as any } },
+      let where: any = {};
+      
+      if (search) {
+        where.OR = [
           { email: { contains: search, mode: 'insensitive' as any } },
-        ],
-      } : {};
+          { displayName: { contains: search, mode: 'insensitive' as any } },
+        ];
+      }
+      
+      if (user_id) {
+        where.user_id = { contains: user_id, mode: 'insensitive' as any };
+      }
+      
+      if (displayName) {
+        where.displayName = { contains: displayName, mode: 'insensitive' as any };
+      }
 
       const [users, total] = await Promise.all([
         prisma.user.findMany({
           where,
           select: {
-            id: true,
-            name: true,
+            user_id: true,
+            displayName: true,
             email: true,
             photo: true,
             gender: true,
@@ -264,7 +297,7 @@ export class UserService {
           },
           skip,
           take: limit,
-          orderBy: { name: 'asc' },
+          orderBy: { displayName: 'asc' },
         }),
         prisma.user.count({ where }),
       ]);
@@ -289,16 +322,16 @@ export class UserService {
   /**
    * Delete user
    */
-  static async deleteUser(id: string) {
+  static async deleteUser(user_id: string) {
     try {
       await prisma.user.delete({
-        where: { id },
+        where: { user_id },
       });
 
-      logger.info(`User deleted: ${id}`);
+      logger.info(`User deleted: ${user_id}`);
       return { success: true };
     } catch (error) {
-      logger.error(`Error deleting user ${id}:`, error);
+      logger.error(`Error deleting user ${user_id}:`, error);
       throw error;
     }
   }
@@ -306,11 +339,11 @@ export class UserService {
   /**
    * Change user password
    */
-  static async changePassword(id: string, currentPassword: string, newPassword: string) {
+  static async changePassword(user_id: string, currentPassword: string, newPassword: string) {
     try {
       // Get user with current password
       const user = await prisma.user.findUnique({
-        where: { id },
+        where: { user_id },
         select: { passwordHash: true },
       });
 
@@ -330,14 +363,14 @@ export class UserService {
 
       // Update password
       await prisma.user.update({
-        where: { id },
+        where: { user_id },
         data: { passwordHash: newHashedPassword },
       });
 
-      logger.info(`Password changed for user: ${id}`);
+      logger.info(`Password changed for user: ${user_id}`);
       return { success: true };
     } catch (error) {
-      logger.error(`Error changing password for user ${id}:`, error);
+      logger.error(`Error changing password for user ${user_id}:`, error);
       throw error;
     }
   }

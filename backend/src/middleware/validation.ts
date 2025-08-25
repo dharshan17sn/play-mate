@@ -4,6 +4,7 @@ import { ValidationError } from '../utils/errors';
 
 export const validateRequest = <T extends z.ZodTypeAny>(schema: T) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    
     try {
       const validatedData = await schema.parseAsync({
         body: req.body,
@@ -41,7 +42,7 @@ export const paginationSchema = z.object({
 
 export const idParamSchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    user_id: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'User ID can only contain letters, numbers, underscores, and hyphens'),
   }),
 });
 
@@ -53,10 +54,21 @@ export const searchSchema = z.object({
   }),
 });
 
+export const userSearchSchema = z.object({
+  query: z.object({
+    user_id: z.string().optional(),
+    displayName: z.string().optional(),
+    search: z.string().optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional().default('asc'),
+  }),
+});
+
 // User validation schemas
 export const userRegistrationSchema = z.object({
   body: z.object({
-    name: z.string().min(2).max(50),
+    user_id: z.string().min(3).max(20),
+    displayName: z.string().min(2).max(30),
     email: z.string().email(),
     password: z.string().min(8).max(100),
     gender: z.string().optional(),
@@ -73,7 +85,7 @@ export const userLoginSchema = z.object({
 
 export const userUpdateSchema = z.object({
   body: z.object({
-    name: z.string().min(2).max(50).optional(),
+    displayName: z.string().min(2).max(30).optional(),
     photo: z.string().optional(),
     gender: z.string().optional(),
     location: z.string().optional(),

@@ -10,11 +10,14 @@ export class UserController {
    */
   static register = asyncErrorHandler(async (req: Request, res: Response) => {
     const userData = req.body;
-    
-    const user = await UserService.createUser(userData);
+  
+    // creating the new user
+    await UserService.createUser(userData);
+    // rest include auth token also 
+    const rest = await UserService.authenticateUser(userData.email,userData.password)
     
     res.status(201).json(
-      ResponseBuilder.created(user, 'User registered successfully')
+      ResponseBuilder.created(rest, 'User registered successfully')
     );
   });
 
@@ -41,7 +44,7 @@ export class UserController {
       );
     }
 
-    const user = await UserService.getUserById(req.user.id);
+    const user = await UserService.getUserById(req.user.user_id);
     
     res.status(200).json(
       ResponseBuilder.success(user, 'Profile retrieved successfully')
@@ -49,12 +52,12 @@ export class UserController {
   });
 
   /**
-   * Get user profile by ID
+   * Get user profile by user_id
    */
   static getUserById = asyncErrorHandler(async (req: Request, res: Response) => {
-    const id = req.params.id as string;
+    const user_id = req.params.user_id as string;
     
-    const user = await UserService.getUserById(id);
+    const user = await UserService.getUserById(user_id);
     
     res.status(200).json(
       ResponseBuilder.success(user, 'User profile retrieved successfully')
@@ -72,7 +75,7 @@ export class UserController {
     }
 
     const updateData = req.body;
-    const user = await UserService.updateUser(req.user.id, updateData);
+    const user = await UserService.updateUser(req.user.user_id, updateData);
     
     res.status(200).json(
       ResponseBuilder.updated(user, 'Profile updated successfully')
@@ -114,6 +117,23 @@ export class UserController {
   });
 
   /**
+   * Search users by user_id, displayName, or general search
+   */
+  static searchUsers = asyncErrorHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string;
+    const user_id = req.query.user_id as string;
+    const displayName = req.query.displayName as string;
+    
+    const result = await UserService.getUsers(page, limit, search, user_id, displayName);
+    
+    res.status(200).json(
+      ResponseBuilder.success(result, 'Users search completed successfully')
+    );
+  });
+
+  /**
    * Delete user
    */
   static deleteUser = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -124,14 +144,14 @@ export class UserController {
     }
 
     // Only allow users to delete their own account
-    const { id } = req.params;
-    if (req.user.id !== id) {
+    const { user_id } = req.params;
+    if (req.user.user_id !== user_id) {
       return res.status(403).json(
         ResponseBuilder.forbidden('You can only delete your own account')
       );
     }
 
-    await UserService.deleteUser(id);
+    await UserService.deleteUser(user_id);
     
     res.status(200).json(
       ResponseBuilder.deleted('Account deleted successfully')
@@ -150,7 +170,7 @@ export class UserController {
 
     const { currentPassword, newPassword } = req.body;
     
-    await UserService.changePassword(req.user.id, currentPassword, newPassword);
+    await UserService.changePassword(req.user.user_id, currentPassword, newPassword);
     
     res.status(200).json(
       ResponseBuilder.success({}, 'Password changed successfully')
@@ -167,7 +187,7 @@ export class UserController {
       );
     }
 
-    const user = await UserService.getUserWithTeams(req.user.id);
+    const user = await UserService.getUserWithTeams(req.user.user_id);
     
     res.status(200).json(
       ResponseBuilder.success(user.teams, 'Your teams retrieved successfully')
