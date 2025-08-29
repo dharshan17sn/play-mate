@@ -4,12 +4,11 @@ A TypeScript/Express + Prisma backend for the Play‑Mate platform.
 
 ## Quick Start
 
-1) Install Bun (recommended) or Node.js
+1) Install Bun (recommended) 
 
 Using Bun (Linux/macOS):
 ```bash
-curl -fsSL https://bun.sh/install | bash
-# restart your terminal or source your shell profile so `bun` is on PATH
+npm install -g bun
 ```
 
 Using Node.js: install v18+ from nodejs.org or via nvm.
