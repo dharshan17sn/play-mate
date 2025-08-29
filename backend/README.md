@@ -4,9 +4,23 @@ A TypeScript/Express + Prisma backend for the Play‑Mate platform.
 
 ## Quick Start
 
-1) Install deps
+1) Install Bun (recommended) or Node.js
+
+Using Bun (Linux/macOS):
+```bash
+curl -fsSL https://bun.sh/install | bash
+# restart your terminal or source your shell profile so `bun` is on PATH
+```
+
+Using Node.js: install v18+ from nodejs.org or via nvm.
+
+2) Install deps
 
 ```bash
+# with Bun
+bun install
+
+# or with npm
 npm install
 ```
 
@@ -43,36 +57,37 @@ JWT_EXPIRES_IN="7d"
 
 ```bash
 # Generate client
-npm run db:generate
+bun run db:generate    # or: npm run db:generate
 
 # Apply schema (safe)
-npm run db:push
+bun run db:push        # or: npm run db:push
 
 # Or manage migrations
-npm run db:migrate
-
-# Optional: Prisma Studio
-npm run db:studio
+bun run db:migrate     # or: npm run db:migrate
 ```
 
 4) Start server
 
 ```bash
-npm run dev
+# with Bun
+bun run dev
 # http://localhost:3000
+
+# or with npm
+npm run dev
 ```
 
 5) Run tests (Vitest + Supertest)
 
 ```bash
+# with Bun
+bun test
+
+# or with npm
 npm test
 ```
 
-- Optional integration test env (to exercise team/invitation flows):
-```bash
-export TEST_USER_A_ID="userA" TEST_USER_A_PASSWORD="passA"
-export TEST_USER_B_ID="userB" TEST_USER_B_PASSWORD="passB"
-```
+
 
 ## Project Structure
 
@@ -229,19 +244,43 @@ All routes require auth unless noted.
 - Invitations
   - `invitationCreateSchema`: toUserId, teamId
 
-## Local Dev Notes
-
-- OTP email sending falls back to console logs in non‑production if SMTP isn’t configured.
-- For testing protected flows, use existing users or seed users and log in to get a JWT.
 
 ## System Requirements
 
-- Operating System: macOS, Linux, or Windows (WSL recommended on Windows)
-- Node.js: v18 or newer
-- Package Manager: npm (included with Node.js)
+- Operating System: macOS, Linux, Windows
+- Bun runtime and package manager
+- Or Node.js v22 or newer (if not using Bun)
 - Database: PostgreSQL 13+
-- Prisma CLI: installed via project devDependencies
-- Optional: Bun (for faster local dev) and Docker (if containerizing)
+- Prisma CLI: via project devDependencies
+
+## Docker (optional, for Postgres without local install)
+
+If you prefer not to install PostgreSQL locally, use Docker:
+
+1) Start Postgres
+```bash
+docker run -d --name playmate-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=playmate \
+  -p 5432:5432 postgres:15
+```
+
+2) Set DATABASE_URL in `.env`
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/playmate"
+```
+
+3) Apply schema and generate client
+```bash
+bun run db:push && bun run db:generate
+```
+
+4)  Connect with psql in the container
+```bash
+docker exec -it playmate-postgres psql -U postgres -d playmate
+```
+- you can run raw query here and check the sql tables
 
 ## API Integration Reference
 
@@ -254,5 +293,5 @@ See `API_ENDPOINTS.md` for the full endpoint catalog with request/response examp
 
 ## Troubleshooting
 
-- Prisma errors about missing/old columns → run `npm run db:push` or `npm run db:migrate`.
-- Gmail SMTP EAUTH 534 → use an App Password (enable 2FA) or a dev SMTP (e.g., Mailtrap).
+- Prisma errors about missing/old columns → run `bun run db:push` or `bun run db:migrate` (or npm equivalents).
+- Gmail SMTP EAUTH 534 → use an App Password.
