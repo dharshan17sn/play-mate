@@ -26,31 +26,9 @@ npm install
 
 2) Configure environment
 
-Create `.env` with at least:
-
-```env
-# Core
-NODE_ENV=development
-PORT=3000
-DATABASE_URL="postgresql://user:pass@localhost:5432/playmate"
-
-# JWT
-JWT_SECRET="replace-with-strong-secret"
-JWT_EXPIRES_IN="7d"
-
-# Email (optional; for OTP flows)
-# Use either SMTP provider creds or Gmail app password
-# SMTP_PROVIDER=gmail
-# SMTP_USER=you@gmail.com
-# SMTP_PASS=your-app-password
-# SMTP_FROM=you@gmail.com
-# Or generic SMTP:
-# SMTP_HOST=smtp.mailtrap.io
-# SMTP_PORT=587
-# SMTP_SECURE=false
-# SMTP_USER=...
-# SMTP_PASS=...
-# SMTP_FROM=you@example.com
+```bash
+cp .env.example .env
+# then edit .env to match your local setup (DB URL, JWT, SMTP, etc.)
 ```
 
 3) Database (Prisma)
