@@ -6,12 +6,11 @@ A TypeScript/Express + Prisma backend for the Play‑Mate platform.
 
 1) Install Bun (recommended) 
 
-Using Bun (Linux/macOS):
+Using Bun :
 ```bash
 npm install -g bun
 ```
 
-Using Node.js: install v18+ from nodejs.org or via nvm.
 
 2) Install deps
 
@@ -136,36 +135,6 @@ src/
 - Registration uses OTP flow: request OTP, verify OTP to create account.
 - Forgot password uses OTP flow: request OTP, then reset.
 
-### User Registration via Postman
-
-1) Request OTP
-- Method: POST
-- URL: `http://localhost:3000/api/v1/users/register/request-otp`
-- Headers: `Content-Type: application/json`
-- Body (raw JSON):
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-2) Verify OTP (complete registration)
-- Method: POST
-- URL: `http://localhost:3000/api/v1/users/register/verify-otp`
-- Headers: `Content-Type: application/json`
-- Body (raw JSON):
-```json
-{
-  "email": "user@example.com",
-  "code": "123456",
-  "user_id": "your_user_id",
-  "displayName": "Your Name",
-  "password": "StrongPass!234",
-  "gender": "optional",
-  "location": "optional"
-}
-```
-Tip: If SMTP isn’t configured, OTP codes are logged to the server console in non‑production.
 
 ## Global Response Shape
 
