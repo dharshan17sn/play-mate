@@ -54,6 +54,54 @@ bun run dev
 npm run dev
 ```
 
+### Test Users Setup (recommended for integration tests)
+
+Register two users and put their credentials in `.env` so the test scripts can run protected routes.
+
+Using Postman :
+
+1) Create a collection "Play‑Mate"
+
+2) Request 1: POST `http://localhost:3000/api/v1/users/register/request-otp`
+- Headers: `Content-Type: application/json`
+- Body (JSON): `{ "email": "userA@example.com" }`
+- Duplicate the same request for `userB@example.com`.
+
+3) Get OTP codes
+
+-  read OTPs from the mail inboxes.
+
+4) Request 2: POST `http://localhost:3000/api/v1/users/register/verify-otp`
+- Headers: `Content-Type: application/json`
+- Body (JSON) for User A:
+```json
+{
+  "email": "userA@example.com",
+  "code": "<OTP_A>",
+  "user_id": "userA",
+  "displayName": "User A",
+  "password": "passA123!"
+}
+```
+- Send the same for User B (replace email/code/user_id/password accordingly).
+
+5) Request 3: POST `http://localhost:3000/api/v1/users/login`
+- Headers: `Content-Type: application/json`
+- Body (JSON): `{ "identifier": "userA", "password": "passA123!" }`
+- Save the returned `token` as a Postman variable if you want to explore protected routes manually.
+
+6) Update `.env` with:
+```env
+
+USER_A_ID=userA
+USER_A_PASSWORD=passA123!
+
+USER_B_ID=userB
+USER_B_PASSWORD=passB123!
+```
+
+
+
 5) Run tests (Vitest + Supertest)
 
 ```bash
@@ -87,6 +135,37 @@ src/
 - Login accepts email or user_id via `identifier`.
 - Registration uses OTP flow: request OTP, verify OTP to create account.
 - Forgot password uses OTP flow: request OTP, then reset.
+
+### User Registration via Postman
+
+1) Request OTP
+- Method: POST
+- URL: `http://localhost:3000/api/v1/users/register/request-otp`
+- Headers: `Content-Type: application/json`
+- Body (raw JSON):
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+2) Verify OTP (complete registration)
+- Method: POST
+- URL: `http://localhost:3000/api/v1/users/register/verify-otp`
+- Headers: `Content-Type: application/json`
+- Body (raw JSON):
+```json
+{
+  "email": "user@example.com",
+  "code": "123456",
+  "user_id": "your_user_id",
+  "displayName": "Your Name",
+  "password": "StrongPass!234",
+  "gender": "optional",
+  "location": "optional"
+}
+```
+Tip: If SMTP isn’t configured, OTP codes are logged to the server console in non‑production.
 
 ## Global Response Shape
 
