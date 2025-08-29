@@ -8,6 +8,8 @@ import compression from 'compression';
 import { config } from './config';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
+import swaggerUi from 'swagger-ui-express';
+import { openapiSpec } from './openapi';
 
 // Import routes
 import userRoutes from './routes/userRoutes';
@@ -56,6 +58,12 @@ app.use((req: Request, res: Response, next: any) => {
     timestamp: new Date().toISOString(),
   });
   next();
+});
+
+// OpenAPI docs & spec
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+app.get('/api/openapi.json', (req: Request, res: Response) => {
+  res.json(openapiSpec);
 });
 
 // Health check endpoint
