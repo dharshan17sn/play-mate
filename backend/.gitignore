@@ -1,22 +1,33 @@
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
+# dependencies (bun install)
+node_modules
 
-# Build output
-dist/
-.next/
-out/
+# output
+out
+dist
+*.tgz
 
-# Environment
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
 .env
-.env.local
 
-# Databases
-*.sqlite
-*.db
-prisma/migrations/
 
-# OS
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
 .DS_Store
-Thumbs.db
+
+/generated/prisma
