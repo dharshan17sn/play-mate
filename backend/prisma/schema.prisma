@@ -50,8 +50,7 @@ model User {
 }
 
 model Game {
-  id          String       @id @default(uuid())
-  name        String       @unique
+  name        String       @id
   teams       Team[]
   users       UserGame[]
   tournaments Tournament[]
@@ -66,8 +65,8 @@ model Team {
   creatorId String
   creator   User   @relation("TeamCreator", fields: [creatorId], references: [user_id])
 
-  gameId String
-  game   Game   @relation(fields: [gameId], references: [id])
+  gameName String
+  game     Game   @relation(fields: [gameName], references: [name])
 
   members     TeamMember[]
   tournaments TournamentTeam[]
@@ -97,7 +96,7 @@ model Tournament {
   creator   User   @relation("TournamentCreator", fields: [creatorId], references: [user_id])
 
   gameId String
-  game   Game   @relation(fields: [gameId], references: [id])
+  game   Game   @relation(fields: [gameId], references: [name])
 
   photo     String?
   startDate DateTime
@@ -136,12 +135,12 @@ model Invitation {
 model UserGame {
   id     String @id @default(uuid())
   userId String
-  gameId String
+  gameName String
 
   user User @relation(fields: [userId], references: [user_id])
-  game Game @relation(fields: [gameId], references: [id])
+  game Game @relation(fields: [gameName], references: [name])
 
-  @@unique([userId, gameId]) // Prevent duplicate preferences
+  @@unique([userId, gameName]) // Prevent duplicate preferences
 }
 
 model Message {

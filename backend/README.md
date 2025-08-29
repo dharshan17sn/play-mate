@@ -1,296 +1,258 @@
 # Play-Mate Backend API
 
-A comprehensive backend API for the Play-Mate gaming platform, built with Node.js, Express, TypeScript, and Prisma.
+A TypeScript/Express + Prisma backend for the Play‑Mate platform.
 
-## 🚀 Features
+## Quick Start
 
-- **User Management**: Registration, authentication, profile management
-- **Team System**: Create teams, manage members, handle invitations
-- **Tournament Management**: Organize and participate in tournaments
-- **Real-time Communication**: Team and tournament messaging
-- **Game Preferences**: Track user game preferences
-- **Security**: JWT authentication, rate limiting, CORS protection
-- **Validation**: Request validation using Zod schemas
-- **Error Handling**: Comprehensive error handling and logging
-- **Database**: PostgreSQL with Prisma ORM
-
-## 🛠️ Tech Stack
-
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT with bcrypt
-- **Validation**: Zod schemas
-- **Logging**: Winston
-- **Security**: Helmet, CORS, Rate Limiting
-- **Development**: tsx for hot reloading
-
-## 📋 Prerequisites
-
-- Node.js 18+ or Bun
-- PostgreSQL database
-- Git
-
-## 🚀 Quick Start
-
-### 1. Clone and Install Dependencies
+1) Install deps
 
 ```bash
-cd backend
 npm install
-# or
-bun install
 ```
 
-### 2. Environment Setup
+2) Configure environment
 
-Copy the environment file and configure your database:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your configuration:
+Create `.env` with at least:
 
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/playmate_db"
+# Core
+NODE_ENV=development
+PORT=3000
+DATABASE_URL="postgresql://user:pass@localhost:5432/playmate"
 
 # JWT
-JWT_SECRET="your-super-secret-jwt-key-here"
+JWT_SECRET="replace-with-strong-secret"
 JWT_EXPIRES_IN="7d"
 
-# Server
-PORT=3000
-NODE_ENV="development"
+# Email (optional; for OTP flows)
+# Use either SMTP provider creds or Gmail app password
+# SMTP_PROVIDER=gmail
+# SMTP_USER=you@gmail.com
+# SMTP_PASS=your-app-password
+# SMTP_FROM=you@gmail.com
+# Or generic SMTP:
+# SMTP_HOST=smtp.mailtrap.io
+# SMTP_PORT=587
+# SMTP_SECURE=false
+# SMTP_USER=...
+# SMTP_PASS=...
+# SMTP_FROM=you@example.com
 ```
 
-### 3. Database Setup
+3) Database (Prisma)
 
 ```bash
-# Generate Prisma client
+# Generate client
 npm run db:generate
 
-# Push schema to database
+# Apply schema (safe)
 npm run db:push
 
-# Or run migrations
+# Or manage migrations
 npm run db:migrate
+
+# Optional: Prisma Studio
+npm run db:studio
 ```
 
-### 4. Seed Database (Optional)
-
-```bash
-npm run db:seed
-```
-
-This creates sample data including:
-- 5 games (CS2, Valorant, LoL, Dota 2, Rocket League)
-- 4 users with password: `password123`
-- 3 teams
-- 2 tournaments
-- Sample invitations and messages
-
-### 5. Start Development Server
+4) Start server
 
 ```bash
 npm run dev
+# http://localhost:3000
 ```
 
-The server will start on `http://localhost:3000`
+5) Run tests (Vitest + Supertest)
 
-## 📚 API Endpoints
+```bash
+npm test
+```
 
-### Authentication
-- `POST /api/v1/users/register` - User registration
-- `POST /api/v1/users/login` - User login
+- Optional integration test env (to exercise team/invitation flows):
+```bash
+export TEST_USER_A_ID="userA" TEST_USER_A_PASSWORD="passA"
+export TEST_USER_B_ID="userB" TEST_USER_B_PASSWORD="passB"
+```
 
-### User Management
-- `GET /api/v1/users/profile` - Get current user profile
-- `PUT /api/v1/users/profile` - Update user profile
-- `GET /api/v1/users/:id` - Get user by ID
-- `GET /api/v1/users/:id/teams` - Get user's teams
-- `GET /api/v1/users` - Get users with pagination
-- `PUT /api/v1/users/change-password` - Change password
-- `DELETE /api/v1/users/:id` - Delete user account
-
-### Health Check
-- `GET /health` - Server health status
-- `GET /` - API information
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
-├── config/          # Configuration files
-│   ├── index.ts     # Main config
-│   └── database.ts  # Database configuration
-├── controllers/     # Request handlers
-│   └── userController.ts
-├── middleware/      # Express middleware
-│   ├── auth.ts      # Authentication
-│   ├── validation.ts # Request validation
-│   └── errorHandler.ts # Error handling
-├── models/          # Data models (Prisma handles this)
-├── routes/          # API route definitions
-│   └── userRoutes.ts
-├── services/        # Business logic
-│   └── userService.ts
-├── types/           # TypeScript type definitions
-├── utils/           # Utility functions
-│   ├── errors.ts    # Custom error classes
-│   ├── logger.ts    # Logging utility
-│   └── response.ts  # Response formatting
-├── scripts/         # Utility scripts
-│   └── seed.ts      # Database seeding
-├── app.ts           # Express application setup
-└── index.ts         # Server entry point
+├─ app.ts                  # Express app (routes + middleware)
+├─ index.ts                # Server bootstrap
+├─ config/                 # App + DB config
+├─ controllers/            # Route handlers
+├─ middleware/             # auth, validation, errors
+├─ routes/                 # Express routers
+├─ services/               # Business logic (Prisma access)
+├─ utils/                  # logger, response builder, errors
+└─ scripts/                # seed, utilities
 ```
 
-## 🔧 Development Commands
+## Authentication Overview
 
-```bash
-# Development with hot reload
-npm run dev
+- JWT based. Send `Authorization: Bearer <token>` on protected routes.
+- Login accepts email or user_id via `identifier`.
+- Registration uses OTP flow: request OTP, verify OTP to create account.
+- Forgot password uses OTP flow: request OTP, then reset.
 
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Database operations
-npm run db:generate    # Generate Prisma client
-npm run db:push        # Push schema changes
-npm run db:migrate     # Run migrations
-npm run db:studio      # Open Prisma Studio
-npm run db:seed        # Seed database
-
-# Code quality
-npm run lint           # ESLint
-npm run format         # Prettier
-npm test              # Run tests
-```
-
-## 🔒 Security Features
-
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: bcrypt with 12 salt rounds
-- **CORS Protection**: Configurable cross-origin restrictions
-- **Helmet**: Security headers and protection
-- **Input Validation**: Zod schema validation
-- **SQL Injection Protection**: Prisma ORM protection
-
-## 📊 Database Schema
-
-The application uses a relational database with the following main entities:
-
-- **Users**: User accounts and profiles
-- **Games**: Available games
-- **Teams**: User teams for specific games
-- **TeamMembers**: Team membership with status
-- **Tournaments**: Competitive events
-- **TournamentTeams**: Team tournament registrations
-- **Invitations**: Team invitations
-- **Messages**: Team and tournament communication
-- **UserGames**: User game preferences
-
-## 🚀 Deployment
-
-### Environment Variables
-
-Ensure all required environment variables are set in production:
-
-```env
-NODE_ENV=production
-PORT=3000
-DATABASE_URL="your-production-database-url"
-JWT_SECRET="your-production-jwt-secret"
-```
-
-### Build and Start
-
-```bash
-npm run build
-npm start
-```
-
-### Docker (Optional)
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY dist ./dist
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-## 🧪 Testing
-
-need to be implemente
-
-
-
-## 📝 API Documentation
-
-### Request/Response Format
-
-All API responses follow a consistent format:
+## Global Response Shape
 
 ```json
 {
   "success": true,
-  "message": "Success message",
-  "data": { ... },
-  "timestamp": "2024-01-01T00:00:00.000Z"
+  "message": "...",
+  "data": { },
+  "timestamp": "2025-01-01T00:00:00.000Z"
 }
 ```
 
-### Error Responses
-
+Errors:
 ```json
 {
   "success": false,
-  "message": "Error message",
-  "error": "Error details",
-  "timestamp": "2024-01-01T00:00:00.000Z"
+  "message": "...",
+  "error": "optional details",
+  "timestamp": "2025-01-01T00:00:00.000Z"
 }
 ```
 
-### Authentication
+## Games API (base: `/api/v1/games`)
 
-Protected endpoints require a JWT token in the Authorization header:
+Note: `Game.name` is the primary key.
 
+- GET `/`  public
+  - Returns all games
+
+- POST `/`  public
+  - Body: `{ name: string }`
+  - 201 created or 409 conflict
+
+- GET `/:name`  public
+  - Returns a game by its name
+
+- POST `/init`  public (idempotent)
+  - Seeds default games if none exist
+
+### Types
+```ts
+// Game
+{ name: string }
 ```
-Authorization: Bearer <your-jwt-token>
+
+## Teams API (base: `/api/v1/teams`)
+
+All routes require auth unless noted.
+
+- POST `/`  protected
+  - Body: `{ title: string; description?; photo?; gameName: string }`
+  - Creates a team for the referenced game name
+
+- GET `/my`  protected
+  - Current user teams
+
+- GET `/all`  protected
+  - Query: `page, limit, search?`
+  - Returns `{ teams, pagination }`
+
+- GET `/:teamId`  protected
+  - Returns a team with members
+
+- PUT `/:teamId`  protected
+  - Body (partial): `{ title?, description?, photo? }`
+
+- DELETE `/:teamId`  protected
+  - Only team creator can delete (403 otherwise)
+
+- GET `/user/:userId`  public
+  - Teams for userId
+
+### Types
+```ts
+// Team
+{
+  id: string;
+  title: string;
+  description?: string;
+  photo?: string;
+  creatorId: string;
+  gameName: string;
+  members: Array<{ id: string; userId: string; displayName: string; status: string; joinedAt: string }>;
+  game: { name: string };
+}
 ```
 
-## 🤝 Contributing
+## Invitations API (base: `/api/v1/invitations`) (auth required)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- POST `/`
+  - Body: `{ toUserId: string; teamId: string }`
+  - Creates a pending invitation
 
-## 📄 License
+- GET `/sent`
+  - Invitations sent by current user
 
-This project is licensed under the MIT License.
+- GET `/received`
+  - Invitations received by current user
 
-## 🆘 Support
+- GET `/:invitationId`
+  - Single invitation
 
-For support and questions:
-- Create an issue in the repository
-- Check the API documentation
-- Review the error logs
+- PUT `/:invitationId/accept`
+  - Accepts invitation (invitee only)
 
-## 🔄 Changelog
+- PUT `/:invitationId/reject`
+  - Rejects invitation (invitee only)
 
-### v1.0.0
-- Initial release
-- User management system
-- Team and tournament functionality
-- Comprehensive API endpoints
-- Security and validation features
+- DELETE `/:invitationId`
+  - Cancels invitation (sender)
+
+### Types
+```ts
+// Invitation
+{
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  teamId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  sentAt: string;
+}
+```
+
+## Validation (Zod) Highlights
+
+- Users
+  - `userRegistrationSchema`: user_id(min 8), displayName, email, password
+  - `userLoginSchema`: identifier(min 8), password
+- Teams
+  - `teamCreateSchema`: title, description?, photo?, gameName
+- Invitations
+  - `invitationCreateSchema`: toUserId, teamId
+
+## Local Dev Notes
+
+- OTP email sending falls back to console logs in non‑production if SMTP isn’t configured.
+- For testing protected flows, use existing users or seed users and log in to get a JWT.
+
+## System Requirements
+
+- Operating System: macOS, Linux, or Windows (WSL recommended on Windows)
+- Node.js: v18 or newer
+- Package Manager: npm (included with Node.js)
+- Database: PostgreSQL 13+
+- Prisma CLI: installed via project devDependencies
+- Optional: Bun (for faster local dev) and Docker (if containerizing)
+
+## API Integration Reference
+
+See `API_ENDPOINTS.md` for the full endpoint catalog with request/response examples and integration notes.
+
+## Health and Root
+
+- GET `/health` → `{ status: 'OK', timestamp, uptime, environment }`
+- GET `/` → info + links
+
+## Troubleshooting
+
+- Prisma errors about missing/old columns → run `npm run db:push` or `npm run db:migrate`.
+- Gmail SMTP EAUTH 534 → use an App Password (enable 2FA) or a dev SMTP (e.g., Mailtrap).

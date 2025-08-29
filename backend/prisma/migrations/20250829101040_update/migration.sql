@@ -19,10 +19,9 @@ CREATE TABLE "public"."User" (
 
 -- CreateTable
 CREATE TABLE "public"."Game" (
-    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
 
-    CONSTRAINT "Game_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Game_pkey" PRIMARY KEY ("name")
 );
 
 -- CreateTable
@@ -32,7 +31,7 @@ CREATE TABLE "public"."Team" (
     "photo" TEXT,
     "description" TEXT,
     "creatorId" TEXT NOT NULL,
-    "gameId" TEXT NOT NULL,
+    "gameName" TEXT NOT NULL,
 
     CONSTRAINT "Team_pkey" PRIMARY KEY ("id")
 );
@@ -88,7 +87,7 @@ CREATE TABLE "public"."Invitation" (
 CREATE TABLE "public"."UserGame" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "gameId" TEXT NOT NULL,
+    "gameName" TEXT NOT NULL,
 
     CONSTRAINT "UserGame_pkey" PRIMARY KEY ("id")
 );
@@ -120,16 +119,13 @@ CREATE UNIQUE INDEX "User_user_id_key" ON "public"."User"("user_id");
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Game_name_key" ON "public"."Game"("name");
-
--- CreateIndex
 CREATE UNIQUE INDEX "TeamMember_userId_teamId_key" ON "public"."TeamMember"("userId", "teamId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "TournamentTeam_tournamentId_teamId_key" ON "public"."TournamentTeam"("tournamentId", "teamId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserGame_userId_gameId_key" ON "public"."UserGame"("userId", "gameId");
+CREATE UNIQUE INDEX "UserGame_userId_gameName_key" ON "public"."UserGame"("userId", "gameName");
 
 -- CreateIndex
 CREATE INDEX "_UserTournamentTeams_B_index" ON "public"."_UserTournamentTeams"("B");
@@ -138,7 +134,7 @@ CREATE INDEX "_UserTournamentTeams_B_index" ON "public"."_UserTournamentTeams"("
 ALTER TABLE "public"."Team" ADD CONSTRAINT "Team_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Team" ADD CONSTRAINT "Team_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "public"."Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Team" ADD CONSTRAINT "Team_gameName_fkey" FOREIGN KEY ("gameName") REFERENCES "public"."Game"("name") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."TeamMember" ADD CONSTRAINT "TeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -150,7 +146,7 @@ ALTER TABLE "public"."TeamMember" ADD CONSTRAINT "TeamMember_teamId_fkey" FOREIG
 ALTER TABLE "public"."Tournament" ADD CONSTRAINT "Tournament_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Tournament" ADD CONSTRAINT "Tournament_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "public"."Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Tournament" ADD CONSTRAINT "Tournament_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "public"."Game"("name") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."TournamentTeam" ADD CONSTRAINT "TournamentTeam_tournamentId_fkey" FOREIGN KEY ("tournamentId") REFERENCES "public"."Tournament"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -171,7 +167,7 @@ ALTER TABLE "public"."Invitation" ADD CONSTRAINT "Invitation_teamId_fkey" FOREIG
 ALTER TABLE "public"."UserGame" ADD CONSTRAINT "UserGame_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserGame" ADD CONSTRAINT "UserGame_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "public"."Game"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UserGame" ADD CONSTRAINT "UserGame_gameName_fkey" FOREIGN KEY ("gameName") REFERENCES "public"."Game"("name") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Message" ADD CONSTRAINT "Message_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;

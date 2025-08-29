@@ -11,6 +11,9 @@ import { logger } from './utils/logger';
 
 // Import routes
 import userRoutes from './routes/userRoutes';
+import teamRoutes from './routes/teamRoutes';
+import invitationRoutes from './routes/invitationRoutes';
+import gameRoutes from './routes/gameRoutes';
 
 // Create Express app
 const app = express();
@@ -67,6 +70,9 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API routes
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/teams', teamRoutes);
+app.use('/api/v1/invitations', invitationRoutes);
+app.use('/api/v1/games', gameRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

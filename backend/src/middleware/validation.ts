@@ -67,7 +67,7 @@ export const userSearchSchema = z.object({
 // User validation schemas
 export const userRegistrationSchema = z.object({
   body: z.object({
-    user_id: z.string().min(3).max(20),
+    user_id: z.string().min(8).max(20),
     displayName: z.string().min(2).max(30),
     email: z.string().email(),
     password: z.string().min(8).max(100),
@@ -78,7 +78,7 @@ export const userRegistrationSchema = z.object({
 
 export const userLoginSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    identifier: z.string().min(4), // email or user_id
     password: z.string(),
   }),
 });
@@ -92,12 +92,45 @@ export const userUpdateSchema = z.object({
   }),
 });
 
+export const requestOtpSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+  }),
+});
+
+export const  verifyOtpSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+    code: z.string().min(4).max(8),
+    user_id: z.string().min(4).max(20),
+    displayName: z.string().min(4).max(30),
+    password: z.string().min(8).max(100),
+    gender: z.string().optional(),
+    location: z.string().optional(),
+  }),
+});
+
+export const forgotPasswordRequestSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+  }),
+});
+
+export const forgotPasswordResetSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+    code: z.string().min(4).max(8),
+    newPassword: z.string().min(8).max(100),
+  }),
+});
+
 // Team validation schemas
 export const teamCreateSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(100),
     description: z.string().max(500).optional(),
-    gameId: z.string().uuid(),
+    photo: z.string().optional(),
+    gameName: z.string().min(2).max(50),
   }),
 });
 
@@ -106,6 +139,19 @@ export const teamUpdateSchema = z.object({
     title: z.string().min(2).max(100).optional(),
     description: z.string().max(500).optional(),
     photo: z.string().optional(),
+  }),
+});
+
+// Team parameter validation schemas
+export const teamIdParamSchema = z.object({
+  params: z.object({
+    teamId: z.string().uuid(),
+  }),
+});
+
+export const invitationIdParamSchema = z.object({
+  params: z.object({
+    invitationId: z.string().uuid(),
   }),
 });
 
@@ -134,7 +180,7 @@ export const tournamentUpdateSchema = z.object({
 // Invitation validation schemas
 export const invitationCreateSchema = z.object({
   body: z.object({
-    toUserId: z.string().uuid(),
+    toUserId: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'User ID can only contain letters, numbers, underscores, and hyphens'),
     teamId: z.string().uuid(),
   }),
 });

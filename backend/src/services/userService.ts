@@ -65,9 +65,6 @@ export class UserService {
         if (existingUser.user_id === data.user_id) {
           throw new ConflictError('User ID already taken');
         }
-        if (existingUser.displayName === data.displayName) {
-          throw new ConflictError('Display name already taken');
-        }
       }
 
       // Hash password
@@ -103,13 +100,18 @@ export class UserService {
   }
 
   /**
-   * Authenticate user and generate JWT token
+   * Authenticate user (by email or user_id) and generate JWT token
    */
-  static async authenticateUser(email: string, password: string) {
+  static async authenticateUser(identifier: string, password: string) {
     try {
-      // Find user by email
-      const user = await prisma.user.findUnique({
-        where: { email },
+      // Find user by email or user_id
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { user_id: identifier },
+          ],
+        },
         select: {
           user_id: true,
           email: true,
@@ -371,6 +373,32 @@ export class UserService {
       return { success: true };
     } catch (error) {
       logger.error(`Error changing password for user ${user_id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password by email (forgot password flow)
+   */
+  static async resetPasswordByEmail(email: string, newPassword: string) {
+    try {
+      const user = await prisma.user.findUnique({ where: { email }, select: { user_id: true } });
+      if (!user) {
+        throw new NotFoundError('Email not found');
+      }
+
+      const saltRounds = 12;
+      const newHashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      await prisma.user.update({
+        where: { email },
+        data: { passwordHash: newHashedPassword },
+      });
+
+      logger.info(`Password reset for user: ${email}`);
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error resetting password for email ${email}:`, error);
       throw error;
     }
   }

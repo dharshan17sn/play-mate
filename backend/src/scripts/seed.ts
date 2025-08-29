@@ -36,7 +36,8 @@ async function main() {
     const users = await Promise.all([
       prisma.user.create({
         data: {
-          name: 'John Doe',
+          user_id: 'john_doe',
+          displayName: 'John Doe',
           email: 'john@example.com',
           passwordHash: hashedPassword,
           gender: 'Male',
@@ -45,7 +46,8 @@ async function main() {
       }),
       prisma.user.create({
         data: {
-          name: 'Jane Smith',
+          user_id: 'jane_smith',
+          displayName: 'Jane Smith',
           email: 'jane@example.com',
           passwordHash: hashedPassword,
           gender: 'Female',
@@ -54,7 +56,8 @@ async function main() {
       }),
       prisma.user.create({
         data: {
-          name: 'Mike Johnson',
+          user_id: 'mike_johnson',
+          displayName: 'Mike Johnson',
           email: 'mike@example.com',
           passwordHash: hashedPassword,
           gender: 'Male',
@@ -63,7 +66,8 @@ async function main() {
       }),
       prisma.user.create({
         data: {
-          name: 'Sarah Wilson',
+          user_id: 'sarah_wilson',
+          displayName: 'Sarah Wilson',
           email: 'sarah@example.com',
           passwordHash: hashedPassword,
           gender: 'Female',
