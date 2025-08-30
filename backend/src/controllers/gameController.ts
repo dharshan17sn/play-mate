@@ -9,11 +9,20 @@ export class GameController {
    * Get all games
    */
   static getAllGames = asyncErrorHandler(async (req: Request, res: Response) => {
-    const games = await GameService.getAllGames();
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = await GameService.getAllGames(page, limit);
 
     logger.info('All games retrieved successfully');
     res.status(200).json(
-      ResponseBuilder.success(games, 'Games retrieved successfully')
+      ResponseBuilder.paginated(
+        result.games,
+        page,
+        limit,
+        result.pagination.total,
+        'Games retrieved successfully'
+      )
     );
   });
 
@@ -21,17 +30,17 @@ export class GameController {
    * Get game by name
    */
   static getGameById = asyncErrorHandler(async (req: Request, res: Response) => {
-    const { gameId } = req.params;
+    const { name } = req.params;
     
-    if (!gameId) {
+    if (!name) {
       return res.status(400).json(
         ResponseBuilder.validationError('Game name is required')
       );
     }
 
-    const game = await GameService.getGameByName(gameId);
+    const game = await GameService.getGameByName(name);
 
-    logger.info(`Game retrieved successfully: ${gameId}`);
+    logger.info(`Game retrieved successfully: ${name}`);
     res.status(200).json(
       ResponseBuilder.success(game, 'Game retrieved successfully')
     );

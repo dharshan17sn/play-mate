@@ -66,6 +66,10 @@ app.get('/api/openapi.json', (req: Request, res: Response) => {
   res.json(openapiSpec);
 });
 
+// Log that docs are being served
+console.log('📚 API Documentation available at: http://localhost:3000/api/docs');
+console.log('📄 OpenAPI JSON available at: http://localhost:3000/api/openapi.json');
+
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
@@ -89,6 +93,17 @@ app.get('/', (req: Request, res: Response) => {
     version: '1.0.0',
     documentation: '/api/docs',
     health: '/health',
+    openapi: '/api/openapi.json',
+  });
+});
+
+// Test endpoint to verify OpenAPI spec
+app.get('/api/test-docs', (req: Request, res: Response) => {
+  res.json({
+    message: 'OpenAPI spec test',
+    pathsCount: Object.keys((openapiSpec as any).paths || {}).length,
+    hasPaths: !!(openapiSpec as any).paths,
+    specKeys: Object.keys(openapiSpec),
   });
 });
 

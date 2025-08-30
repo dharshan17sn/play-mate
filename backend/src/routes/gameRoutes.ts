@@ -44,7 +44,7 @@ router.get('/', GameController.getAllGames);
  *       404:
  *         description: Not found
  */
-router.get('/:gameId', GameController.getGameById);
+router.get('/:name', GameController.getGameById);
 
 /**
  * @openapi

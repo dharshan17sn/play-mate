@@ -17,6 +17,8 @@ export interface CreateUserData {
   password: string;
   gender?: string;
   location?: string;
+  preferredDays?: string[];
+  timeRange?: string;
 }
 
 export interface UpdateUserData {
@@ -24,6 +26,9 @@ export interface UpdateUserData {
   photo?: string;
   gender?: string;
   location?: string;
+  preferredDays?: string[];
+  timeRange?: string;
+  preferredGames?: string[];
 }
 
 export interface UserWithTeams {
@@ -33,6 +38,8 @@ export interface UserWithTeams {
   photo?: string | null;
   gender?: string | null;
   location?: string | null;
+  preferredDays?: string[] | null;
+  timeRange?: string | null;
   teams: Array<{
     id: string;
     title: string;
@@ -79,6 +86,8 @@ export class UserService {
           email: data.email,
           gender: data.gender,
           location: data.location,
+          preferredDays: data.preferredDays as any,
+          timeRange: data.timeRange,
           passwordHash: hashedPassword,
         },
         select: {
@@ -88,6 +97,8 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
+          preferredDays: true,
+          timeRange: true,
         },
       });
 
@@ -165,6 +176,18 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
+          preferredDays: true,
+          timeRange: true,
+          preferredGames: {
+            select: {
+              gameName: true,
+              game: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -184,9 +207,15 @@ export class UserService {
    */
   static async updateUser(user_id: string, data: UpdateUserData) {
     try {
+      const { preferredGames, ...userData } = data;
+
+      // Update user data
       const user = await prisma.user.update({
         where: { user_id },
-        data,
+        data: {
+          ...userData,
+          preferredDays: userData.preferredDays as any, // Cast to Prisma enum type
+        },
         select: {
           user_id: true,
           displayName: true,
@@ -194,11 +223,71 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
+          preferredDays: true,
+          timeRange: true,
         },
       });
 
-      logger.info(`User updated: ${user.email}`);
-      return user;
+      // Handle preferred games if provided
+      if (preferredGames !== undefined) {
+        // Check if all games exist first
+        if (preferredGames.length > 0) {
+          const existingGames = await prisma.game.findMany({
+            where: {
+              name: {
+                in: preferredGames,
+              },
+            },
+            select: { name: true },
+          });
+
+          const existingGameNames = existingGames.map(game => game.name);
+          const nonExistentGames = preferredGames.filter(gameName => !existingGameNames.includes(gameName));
+
+          if (nonExistentGames.length > 0) {
+            throw new NotFoundError(`Games not found: ${nonExistentGames.join(', ')}`);
+          }
+        }
+
+        // Add new preferred games (skip duplicates automatically)
+        if (preferredGames.length > 0) {
+          await prisma.userGame.createMany({
+            data: preferredGames.map(gameName => ({
+              userId: user_id,
+              gameName,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      // Get updated user with preferred games
+      const updatedUser = await prisma.user.findUnique({
+        where: { user_id },
+        select: {
+          user_id: true,
+          displayName: true,
+          email: true,
+          photo: true,
+          gender: true,
+          location: true,
+          preferredDays: true,
+          timeRange: true,
+          preferredGames: {
+            select: {
+              gameName: true,
+              game: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      logger.info(`User updated: ${user_id}`);
+      return updatedUser;
     } catch (error) {
       logger.error(`Error updating user ${user_id}:`, error);
       throw error;
@@ -219,6 +308,8 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
+          preferredDays: true,
+          timeRange: true,
           teams: {
             select: {
               id: true,
@@ -247,7 +338,9 @@ export class UserService {
         photo: user.photo,
         gender: user.gender,
         location: user.location,
-        teams: user.teams.map(tm => ({
+        preferredDays: user.preferredDays,
+        timeRange: user.timeRange,
+        teams: user.teams.map((tm: any) => ({
           id: tm.team.id,
           title: tm.team.title,
           status: tm.status,
@@ -296,6 +389,18 @@ export class UserService {
             photo: true,
             gender: true,
             location: true,
+            preferredDays: true,
+            timeRange: true,
+            preferredGames: {
+              select: {
+                gameName: true,
+                game: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
           },
           skip,
           take: limit,

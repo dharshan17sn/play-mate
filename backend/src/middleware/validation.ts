@@ -73,6 +73,8 @@ export const userRegistrationSchema = z.object({
     password: z.string().min(8).max(100),
     gender: z.string().optional(),
     location: z.string().optional(),
+    preferredDays: z.array(z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])).optional(),
+    timeRange: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time range must be in format HH:MM-HH:MM').optional(),
   }),
 });
 
@@ -89,6 +91,9 @@ export const userUpdateSchema = z.object({
     photo: z.string().optional(),
     gender: z.string().optional(),
     location: z.string().optional(),
+    preferredDays: z.array(z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])).optional(),
+    timeRange: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'timeRange must be in format HH:MM-HH:MM').optional(),
+    preferredGames: z.array(z.string().min(2).max(50)).optional(),
   }),
 });
 
@@ -177,10 +182,9 @@ export const tournamentUpdateSchema = z.object({
   }),
 });
 
-// Invitation validation schemas
+// Join request validation schemas
 export const invitationCreateSchema = z.object({
   body: z.object({
-    toUserId: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'User ID can only contain letters, numbers, underscores, and hyphens'),
     teamId: z.string().uuid(),
   }),
 });
@@ -188,6 +192,23 @@ export const invitationCreateSchema = z.object({
 export const invitationUpdateSchema = z.object({
   body: z.object({
     status: z.enum(['ACCEPTED', 'REJECTED']),
+  }),
+});
+
+// Team admin validation schemas (for promoting/demoting team members)
+export const teamAdminAddSchema = z.object({
+  body: z.object({
+    userId: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'User ID can only contain letters, numbers, underscores, and hyphens'),
+  }),
+  params: z.object({
+    teamId: z.string().uuid(),
+  }),
+});
+
+export const teamAdminRemoveSchema = z.object({
+  params: z.object({
+    teamId: z.string().uuid(),
+    userId: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'User ID can only contain letters, numbers, underscores, and hyphens'),
   }),
 });
 

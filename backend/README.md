@@ -97,19 +97,38 @@ USER_A_PASSWORD=passA123!
 
 USER_B_ID=userB
 USER_B_PASSWORD=passB123!
+
+USER_C_ID=userC
+USER_C_PASSWORD=passC123!
 ```
+
+**Note**: For the new join request tests, you'll need a third user (User C). Follow the same registration process for `userC@example.com`.
 
 
 
 5) Run tests (Vitest + Supertest)
 
 ```bash
-# with Bun
+# Run all tests
 bun test
 
-# or with npm
-npm test
+# Run specific test files
+bun test tests/integration/health.spec.ts
+bun test tests/integration/user_routes.test.ts
+bun test tests/integration/game.test.ts
+bun test tests/integration/team.test.ts
+bun test tests/integration/join_requests.test.ts
+
+# Run all integration tests with script
+./tests/run_all_tests.sh
 ```
+
+**Test Coverage**:
+- Health check endpoint
+- User routes (registration, login, profile, search)
+- Game routes (CRUD operations)
+- Team routes (creation, management)
+- Join request routes (request to join, admin management)
 
 
 

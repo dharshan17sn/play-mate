@@ -89,4 +89,8 @@ export class ResponseBuilder {
   static forbidden(message: string = 'Forbidden'): ApiResponse {
     return this.error(message);
   }
+
+  static conflict(message: string = 'Conflict'): ApiResponse {
+    return this.error(message);
+  }
 }

@@ -55,7 +55,7 @@ export class TeamService {
         throw new NotFoundError('Game not found');
       }
 
-      // Create team and add creator as first member
+      // Create team and add creator as first member with admin privileges
       const team = await prisma.team.create({
         data: {
           title: data.title,
@@ -67,6 +67,7 @@ export class TeamService {
             create: {
               userId: data.creatorId,
               status: 'ACCEPTED',
+              isAdmin: true, // Creator is automatically an admin
             }
           }
         },

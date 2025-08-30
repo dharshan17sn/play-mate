@@ -67,6 +67,10 @@ router.post('/register/request-otp', validateRequest(requestOtpSchema), UserCont
  *               password: { type: string }
  *               gender: { type: string }
  *               location: { type: string }
+ *               preferredDays: 
+ *                 type: array
+ *                 items: { type: string, enum: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] }
+ *               timeRange: { type: string, pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$', example: '18:00-22:00' }
  *     responses:
  *       201: { description: Registered }
  *       400: { description: Invalid or expired OTP }
@@ -208,6 +212,7 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  * /api/v1/users/profile:
  *   put:
  *     summary: Update current user profile
+ *     description: Update your profile information. All fields are optional - only include the fields you want to update.
  *     tags: [Users]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -217,12 +222,138 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *           schema:
  *             type: object
  *             properties:
- *               displayName: { type: string }
- *               photo: { type: string }
- *               gender: { type: string }
- *               location: { type: string }
+ *               displayName:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 30
+ *                 description: Your display name
+ *                 example: "John Doe"
+ *               photo:
+ *                 type: string
+ *                 format: uri
+ *                 description: URL to your profile photo
+ *                 example: "https://example.com/photo.jpg"
+ *               gender:
+ *                 type: string
+ *                 description: Your gender
+ *                 example: "male"
+ *               location:
+ *                 type: string
+ *                 description: Your location/city
+ *                 example: "New York"
+ *               preferredDays:
+ *                 type: array
+ *                 description: Days of the week when you're available to play
+ *                 items:
+ *                   type: string
+ *                   enum: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+ *                 example: ["MONDAY", "WEDNESDAY", "FRIDAY"]
+ *               timeRange:
+ *                 type: string
+ *                 pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+ *                 description: Time range when you're available to play (24-hour format)
+ *                 example: "18:00-22:00"
+ *               preferredGames:
+ *                 type: array
+ *                 description: Names of games to add to your preferred games list (must exist in the database, duplicates are automatically skipped)
+ *                 items:
+ *                   type: string
+ *                   minLength: 2
+ *                   maxLength: 50
+ *                 example: ["Valorant", "CS2", "League of Legends"]
+ *           example:
+ *             displayName: "John Doe"
+ *             photo: "https://example.com/photo.jpg"
+ *             gender: "male"
+ *             location: "New York"
+ *             preferredDays: ["MONDAY", "WEDNESDAY", "FRIDAY"]
+ *             timeRange: "18:00-22:00"
+ *             preferredGames: ["Valorant", "CS2", "League of Legends"]
  *     responses:
- *       200: { description: Updated }
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                       example: "john_doe"
+ *                     displayName:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     email:
+ *                       type: string
+ *                       example: "john@example.com"
+ *                     photo:
+ *                       type: string
+ *                       example: "https://example.com/photo.jpg"
+ *                     gender:
+ *                       type: string
+ *                       example: "male"
+ *                     location:
+ *                       type: string
+ *                       example: "New York"
+ *                     preferredDays:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["MONDAY", "WEDNESDAY", "FRIDAY"]
+ *                     timeRange:
+ *                       type: string
+ *                       example: "18:00-22:00"
+ *                     preferredGames:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           gameName:
+ *                             type: string
+ *                             example: "Valorant"
+ *                           game:
+ *                             type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
+ *                                 example: "Valorant"
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Validation failed: timeRange must be in format HH:MM-HH:MM"
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *       404:
+ *         description: Games not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Games not found: InvalidGame, AnotherInvalidGame"
  */
 router.put('/profile', authenticateToken, validateRequest(userUpdateSchema), UserController.updateProfile);
 
