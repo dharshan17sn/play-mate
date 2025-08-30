@@ -40,6 +40,7 @@ export const errorHandler = (
     switch (error.code) {
       case 'P2002':
         message = 'A record with this unique field already exists';
+        statusCode = 409;
         break;
       case 'P2003':
         message = 'Foreign key constraint failed';

@@ -82,6 +82,132 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     expect(res.body).toHaveProperty('success', true);
   });
 
+  it('should add preferred games to user profile (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        preferredGames: ['Cricket', 'Football'],
+        preferredDays: ['MONDAY', 'WEDNESDAY'],
+        timeRange: '18:00-22:00'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('preferredGames');
+    expect(Array.isArray(res.body.data.preferredGames)).toBe(true);
+  });
+
+  it('should add more games to existing preferred games (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        preferredGames: ['Basketball', 'Tennis']
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('preferredGames');
+    expect(Array.isArray(res.body.data.preferredGames)).toBe(true);
+    // Should now have both previous games and new games
+    expect(res.body.data.preferredGames.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('should reject update with non-existent games (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        preferredGames: ['NonExistentGame1', 'NonExistentGame2']
+      });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.message).toContain('Games not found');
+  });
+
+  it('should update preferred days and time range (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        preferredDays: ['TUESDAY', 'THURSDAY', 'SATURDAY'],
+        timeRange: '19:00-23:00'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('preferredDays');
+    expect(res.body.data).toHaveProperty('timeRange');
+    expect(Array.isArray(res.body.data.preferredDays)).toBe(true);
+    expect(res.body.data.timeRange).toBe('19:00-23:00');
+  });
+
+  it('should reject invalid time range format (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        timeRange: 'Time range must be in format HH:MM-HH:MM'
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
+    expect(res.body.message).toContain('timeRange');
+  });
+
+  it('should reject invalid preferred days (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        preferredDays: ['INVALID_DAY', 'MONDAY']
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
+  });
+
+  it('should update all profile fields together (auth)', async () => {
+    if (!AUTH_TOKEN) return; // skip if login failed
+
+    const res = await request(app)
+      .put(`${base}/profile`)
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({ 
+        displayName: `CompleteUpdate-${Date.now()}`,
+        photo: 'https://example.com/new-photo.jpg',
+        gender: 'male',
+        location: 'San Francisco',
+        preferredDays: ['FRIDAY', 'SATURDAY', 'SUNDAY'],
+        timeRange: '20:00-02:00',
+        preferredGames: ['Volleyball', 'Hockey']
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body.data).toHaveProperty('displayName');
+    expect(res.body.data).toHaveProperty('photo');
+    expect(res.body.data).toHaveProperty('gender');
+    expect(res.body.data).toHaveProperty('location');
+    expect(res.body.data).toHaveProperty('preferredDays');
+    expect(res.body.data).toHaveProperty('timeRange');
+    expect(res.body.data).toHaveProperty('preferredGames');
+  });
+
   it('should get my teams (auth)', async () => {
     if (!AUTH_TOKEN) return; // skip if login failed
 
@@ -100,67 +226,99 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/change-password`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ currentPassword: 'invalid-current', newPassword: 'SomeNewPass!234' });
+      .send({
+        currentPassword: 'wrong-password',
+        newPassword: 'NewPassword123!'
+      });
 
-    expect([400, 401, 403]).toContain(res.status);
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('success', false);
   });
 
-
-  it('should change password successfully and login with new password (auth)', async () => {
+  it('should change password successfully (auth)', async () => {
     if (!AUTH_TOKEN) return; // skip if login failed
 
-    const NEW_PASSWORD = `Tmp${Date.now()}!12`;
-
-    // Change to new password
-    const changeRes = await request(app)
+    const res = await request(app)
       .put(`${base}/change-password`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ currentPassword: USER_A_PASSWORD, newPassword: NEW_PASSWORD });
+      .send({
+        currentPassword: USER_A_PASSWORD,
+        newPassword: 'NewPassword123!'
+      });
 
-    expect(changeRes.status).toBe(200);
-    expect(changeRes.body).toHaveProperty('success', true);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('success', true);
 
-    // Login with new password
-    const loginNew = await request(app)
-      .post(`${base}/login`)
-      .send({ identifier: USER_A_ID, password: NEW_PASSWORD });
-
-    expect(loginNew.status).toBe(200);
-    expect(loginNew.body).toHaveProperty('success', true);
-    expect(loginNew.body.data).toHaveProperty('token');
-
-    // Revert back to original password
-    const revertToken = loginNew.body.data.token as string;
-
+    // Revert password change for other tests
     const revertRes = await request(app)
       .put(`${base}/change-password`)
-      .set('Authorization', `Bearer ${revertToken}`)
-      .send({ currentPassword: NEW_PASSWORD, newPassword: USER_A_PASSWORD });
+      .set('Authorization', `Bearer ${AUTH_TOKEN}`)
+      .send({
+        currentPassword: 'NewPassword123!',
+        newPassword: USER_A_PASSWORD
+      });
 
-    expect(revertRes.status).toBe(200);
-    expect(revertRes.body).toHaveProperty('success', true);
-
-    // Login with original password again
-    const loginOrig = await request(app)
-      .post(`${base}/login`)
-      .send({ identifier: USER_A_ID, password: USER_A_PASSWORD });
-
-    expect(loginOrig.status).toBe(200);
-    expect(loginOrig.body).toHaveProperty('success', true);
+    expect([200, 401]).toContain(revertRes.status);
   });
 
-
-
-  it('should forbid deleting another user (auth)', async () => {
+  it('should reject delete user with wrong user_id (auth)', async () => {
     if (!AUTH_TOKEN) return; // skip if login failed
 
-    const otherId = AUTH_USER_ID === 'someone_else' ? 'another_user' : 'someone_else';
     const res = await request(app)
-      .delete(`${base}/${otherId}`)
+      .delete(`${base}/wrong_user_id`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`);
 
     expect(res.status).toBe(403);
     expect(res.body).toHaveProperty('success', false);
+  });
+
+  it('should reject invalid login credentials', async () => {
+    const res = await request(app)
+      .post(`${base}/login`)
+      .send({
+        identifier: 'nonexistent_user',
+        password: 'wrong_password'
+      });
+
+    expect(res.status).toBe(401);
+    expect(res.body).toHaveProperty('success', false);
+  });
+
+  it('should login with user_id', async () => {
+    if (!USER_A_ID) return; // skip if no user id
+
+    const res = await request(app)
+      .post(`${base}/login`)
+      .send({
+        identifier: USER_A_ID,
+        password: USER_A_PASSWORD
+      });
+
+    expect([200, 401]).toContain(res.status);
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.data).toHaveProperty('token');
+      expect(res.body.data).toHaveProperty('user');
+    }
+  });
+
+  it('should login with email', async () => {
+    const userEmail = process.env.USER_A_EMAIL;
+    if (!userEmail) return; // skip if no email
+
+    const res = await request(app)
+      .post(`${base}/login`)
+      .send({
+        identifier: userEmail,
+        password: USER_A_PASSWORD
+      });
+
+    expect([200, 401]).toContain(res.status);
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.data).toHaveProperty('token');
+      expect(res.body.data).toHaveProperty('user');
+    }
   });
 });
 

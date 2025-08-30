@@ -40,15 +40,30 @@ export class GameService {
   }
 
   /**
-   * Get all games
+   * Get all games with pagination
    */
-  static async getAllGames() {
+  static async getAllGames(page: number = 1, limit: number = 10) {
     try {
-      const games = await prisma.game.findMany({
-        orderBy: { name: 'asc' }
-      });
+      const skip = (page - 1) * limit;
+      
+      const [games, total] = await Promise.all([
+        prisma.game.findMany({
+          orderBy: { name: 'asc' },
+          skip,
+          take: limit,
+        }),
+        prisma.game.count()
+      ]);
 
-      return games;
+      return {
+        games,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
     } catch (error) {
       logger.error('Error getting all games:', error);
       throw error;
@@ -82,7 +97,7 @@ export class GameService {
     try {
       const existingGames = await prisma.game.count();
       
-      if (existingGames === 0) {
+      
         const defaultGames = [
           'Cricket',
           'Football',
@@ -101,7 +116,7 @@ export class GameService {
         }
 
         logger.info('Default games initialized successfully');
-      }
+      
     } catch (error) {
       logger.error('Error initializing default games:', error);
     }

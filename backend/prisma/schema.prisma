@@ -24,6 +24,16 @@ enum TeamMemberStatus {
   REJECTED
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 //
 // MODELS
 //
@@ -35,11 +45,13 @@ model User {
   gender       String?
   passwordHash String
   location     String?
+  preferredDays DayOfWeek[] @default([])
+  timeRange    String? // Format: "HH:MM-HH:MM" e.g., "18:00-22:00"
 
   // relations
   teams               TeamMember[]
-  invitationsSent     Invitation[]     @relation("InvitationsSent")
-  invitationsReceived Invitation[]     @relation("InvitationsReceived")
+  joinRequestsSent     Invitation[]     @relation("JoinRequestsSent")
+  joinRequestsReceived Invitation[]     @relation("JoinRequestsReceived")
   tournaments         TournamentTeam[] @relation("UserTournamentTeams")
   preferredGames      UserGame[]
   messages            Message[]
@@ -70,7 +82,7 @@ model Team {
 
   members     TeamMember[]
   tournaments TournamentTeam[]
-  invitations Invitation[]
+  joinRequests Invitation[]
   messages    Message[]
 }
 
@@ -79,6 +91,7 @@ model TeamMember {
   userId   String
   teamId   String
   status   TeamMemberStatus @default(PENDING)
+  isAdmin  Boolean          @default(false)
   joinedAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [user_id])
@@ -127,8 +140,8 @@ model Invitation {
   status     InvitationStatus @default(PENDING)
   sentAt     DateTime         @default(now())
 
-  fromUser User @relation("InvitationsSent", fields: [fromUserId], references: [user_id])
-  toUser   User @relation("InvitationsReceived", fields: [toUserId], references: [user_id])
+  fromUser User @relation("JoinRequestsSent", fields: [fromUserId], references: [user_id])
+  toUser   User @relation("JoinRequestsReceived", fields: [toUserId], references: [user_id])
   team     Team @relation(fields: [teamId], references: [id])
 }
 

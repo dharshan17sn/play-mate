@@ -32,7 +32,7 @@ export class UserController {
    * Verify OTP and register the user
    */
   static verifyRegistrationOtp = asyncErrorHandler(async (req: Request, res: Response) => {
-    const { email, code, user_id, displayName, password, gender, location } = req.body as any;
+    const { email, code, user_id, displayName, password, gender, location, preferredDays, timeRange } = req.body as any;
 
     const valid = OtpService.verifyOtp(email, code);
     if (!valid) {
@@ -41,7 +41,7 @@ export class UserController {
       );
     }
 
-    await UserService.createUser({ user_id, displayName, email, password, gender, location });
+    await UserService.createUser({ user_id, displayName, email, password, gender, location, preferredDays, timeRange });
 
     // Invalidate OTP after successful use
     OtpService.invalidateOtp(email);

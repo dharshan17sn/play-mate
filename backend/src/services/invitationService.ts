@@ -8,9 +8,8 @@ import {
 import { logger } from '../utils/logger';
 import { TeamService } from './teamService';
 
-export interface CreateInvitationData {
+export interface CreateJoinRequestData {
   fromUserId: string;
-  toUserId: string;
   teamId: string;
 }
 
@@ -28,25 +27,10 @@ export interface InvitationWithDetails {
 
 export class InvitationService {
   /**
-   * Send invitation to join a team
+   * Send request to join a team
    */
-  static async sendInvitation(data: CreateInvitationData) {
+  static async sendJoinRequest(data: CreateJoinRequestData) {
     try {
-      // Check if the sender is a member of the team
-      const isMember = await TeamService.isTeamMember(data.fromUserId, data.teamId);
-      if (!isMember) {
-        throw new ForbiddenError('Only team members can send invitations');
-      }
-
-      // Check if the target user exists
-      const targetUser = await prisma.user.findUnique({
-        where: { user_id: data.toUserId }
-      });
-
-      if (!targetUser) {
-        throw new NotFoundError('Target user not found');
-      }
-
       // Check if the team exists
       const team = await prisma.team.findUnique({
         where: { id: data.teamId }
@@ -60,68 +44,77 @@ export class InvitationService {
       const existingMember = await prisma.teamMember.findUnique({
         where: {
           userId_teamId: {
-            userId: data.toUserId,
+            userId: data.fromUserId,
             teamId: data.teamId,
           }
         }
       });
 
       if (existingMember) {
-        throw new ConflictError('User is already a member of this team');
+        throw new ConflictError('You are already a member of this team');
       }
 
-      // Check if there's already a pending invitation
-      const existingInvitation = await prisma.invitation.findFirst({
+      // Check if there's already a pending join request
+      const existingRequest = await prisma.invitation.findFirst({
         where: {
           fromUserId: data.fromUserId,
-          toUserId: data.toUserId,
           teamId: data.teamId,
           status: 'PENDING'
         }
       });
 
-      if (existingInvitation) {
-        throw new ConflictError('Invitation already sent to this user');
+      if (existingRequest) {
+        throw new ConflictError('Join request already sent to this team');
       }
 
-      // Create the invitation
-      const invitation = await prisma.invitation.create({
-        data: {
-          fromUserId: data.fromUserId,
-          toUserId: data.toUserId,
-          teamId: data.teamId,
-        },
-        include: {
-          fromUser: {
-            select: {
-              displayName: true,
-            }
-          },
-          toUser: {
-            select: {
-              displayName: true,
-            }
-          },
-          team: {
-            select: {
-              title: true,
-            }
-          }
-        }
-      });
+      // Get team admins (members with isAdmin=true)
+      const teamAdmins = await this.getTeamAdmins(data.teamId);
+      if (teamAdmins.length === 0) {
+        throw new NotFoundError('No team admins found');
+      }
 
-      logger.info(`Invitation sent from ${data.fromUserId} to ${data.toUserId} for team ${data.teamId}`);
-      return invitation;
+      // Create join requests for all team admins
+      const invitations = await Promise.all(
+        teamAdmins.map(admin => 
+          prisma.invitation.create({
+            data: {
+              fromUserId: data.fromUserId,
+              toUserId: admin.userId,
+              teamId: data.teamId,
+            },
+            include: {
+              fromUser: {
+                select: {
+                  displayName: true,
+                }
+              },
+              toUser: {
+                select: {
+                  displayName: true,
+                }
+              },
+              team: {
+                select: {
+                  title: true,
+                }
+              }
+            }
+          })
+        )
+      );
+
+      logger.info(`Join request sent from ${data.fromUserId} to team ${data.teamId}`);
+      return invitations[0]; // Return the first invitation for consistency
     } catch (error) {
-      logger.error('Error sending invitation:', error);
+      logger.error('Error sending join request:', error);
       throw error;
     }
   }
 
   /**
-   * Accept invitation
+   * Accept join request (admin only)
    */
-  static async acceptInvitation(invitationId: string, userId: string) {
+  static async acceptJoinRequest(invitationId: string, adminUserId: string) {
     try {
       // Find the invitation
       const invitation = await prisma.invitation.findUnique({
@@ -132,51 +125,57 @@ export class InvitationService {
       });
 
       if (!invitation) {
-        throw new NotFoundError('Invitation not found');
+        throw new NotFoundError('Join request not found');
       }
 
-      // Check if the invitation is for the correct user
-      if (invitation.toUserId !== userId) {
-        throw new ForbiddenError('You can only accept invitations sent to you');
+      // Check if the user is a team admin
+      const isAdmin = await this.isTeamAdmin(adminUserId, invitation.teamId);
+      if (!isAdmin) {
+        throw new ForbiddenError('Only team admins can accept join requests');
       }
 
       // Check if the invitation is still pending
       if (invitation.status !== 'PENDING') {
-        throw new ValidationError('Invitation has already been processed');
+        throw new ValidationError('Join request has already been processed');
       }
 
-      // Use transaction to update invitation and add team member
+      // Use transaction to update all related invitations and add team member
       const result = await prisma.$transaction(async (tx) => {
-        // Update invitation status
-        const updatedInvitation = await tx.invitation.update({
-          where: { id: invitationId },
+        // Update all pending invitations for this user-team combination
+        await tx.invitation.updateMany({
+          where: {
+            fromUserId: invitation.fromUserId,
+            teamId: invitation.teamId,
+            status: 'PENDING'
+          },
           data: { status: 'ACCEPTED' }
         });
 
         // Add user to team
         const teamMember = await tx.teamMember.create({
           data: {
-            userId: userId,
+            userId: invitation.fromUserId,
             teamId: invitation.teamId,
             status: 'ACCEPTED',
+            isAdmin: false, // New members are not admins by default
           }
         });
 
-        return { invitation: updatedInvitation, teamMember };
+        return { teamMember };
       });
 
-      logger.info(`Invitation accepted: ${invitationId} by user ${userId}`);
+      logger.info(`Join request accepted: ${invitationId} by admin ${adminUserId}`);
       return result;
     } catch (error) {
-      logger.error(`Error accepting invitation ${invitationId}:`, error);
+      logger.error(`Error accepting join request ${invitationId}:`, error);
       throw error;
     }
   }
 
   /**
-   * Reject invitation
+   * Reject join request (admin only)
    */
-  static async rejectInvitation(invitationId: string, userId: string) {
+  static async rejectJoinRequest(invitationId: string, adminUserId: string) {
     try {
       // Find the invitation
       const invitation = await prisma.invitation.findUnique({
@@ -184,37 +183,42 @@ export class InvitationService {
       });
 
       if (!invitation) {
-        throw new NotFoundError('Invitation not found');
+        throw new NotFoundError('Join request not found');
       }
 
-      // Check if the invitation is for the correct user
-      if (invitation.toUserId !== userId) {
-        throw new ForbiddenError('You can only reject invitations sent to you');
+      // Check if the user is a team admin
+      const isAdmin = await this.isTeamAdmin(adminUserId, invitation.teamId);
+      if (!isAdmin) {
+        throw new ForbiddenError('Only team admins can reject join requests');
       }
 
       // Check if the invitation is still pending
       if (invitation.status !== 'PENDING') {
-        throw new ValidationError('Invitation has already been processed');
+        throw new ValidationError('Join request has already been processed');
       }
 
-      // Update invitation status
-      const updatedInvitation = await prisma.invitation.update({
-        where: { id: invitationId },
+      // Update all pending invitations for this user-team combination
+      const updatedInvitations = await prisma.invitation.updateMany({
+        where: {
+          fromUserId: invitation.fromUserId,
+          teamId: invitation.teamId,
+          status: 'PENDING'
+        },
         data: { status: 'REJECTED' }
       });
 
-      logger.info(`Invitation rejected: ${invitationId} by user ${userId}`);
-      return updatedInvitation;
+      logger.info(`Join request rejected: ${invitationId} by admin ${adminUserId}`);
+      return { updatedCount: updatedInvitations.count };
     } catch (error) {
-      logger.error(`Error rejecting invitation ${invitationId}:`, error);
+      logger.error(`Error rejecting join request ${invitationId}:`, error);
       throw error;
     }
   }
 
   /**
-   * Cancel invitation (only sender can cancel)
+   * Cancel join request (only requester can cancel)
    */
-  static async cancelInvitation(invitationId: string, userId: string) {
+  static async cancelJoinRequest(invitationId: string, userId: string) {
     try {
       // Find the invitation
       const invitation = await prisma.invitation.findUnique({
@@ -222,76 +226,92 @@ export class InvitationService {
       });
 
       if (!invitation) {
-        throw new NotFoundError('Invitation not found');
+        throw new NotFoundError('Join request not found');
       }
 
-      // Check if the user is the sender
+      // Check if the user is the requester
       if (invitation.fromUserId !== userId) {
-        throw new ForbiddenError('Only the sender can cancel an invitation');
+        throw new ForbiddenError('Only the requester can cancel a join request');
       }
 
       // Check if the invitation is still pending
       if (invitation.status !== 'PENDING') {
-        throw new ValidationError('Can only cancel pending invitations');
+        throw new ValidationError('Can only cancel pending join requests');
       }
 
-      // Delete the invitation
-      await prisma.invitation.delete({
-        where: { id: invitationId }
+      // Delete all pending invitations for this user-team combination
+      await prisma.invitation.deleteMany({
+        where: {
+          fromUserId: userId,
+          teamId: invitation.teamId,
+          status: 'PENDING'
+        }
       });
 
-      logger.info(`Invitation cancelled: ${invitationId} by user ${userId}`);
+      logger.info(`Join request cancelled: ${invitationId} by user ${userId}`);
       return { success: true };
     } catch (error) {
-      logger.error(`Error cancelling invitation ${invitationId}:`, error);
+      logger.error(`Error cancelling join request ${invitationId}:`, error);
       throw error;
     }
   }
 
   /**
-   * Get invitations sent by a user
+   * Get join requests sent by a user
    */
-  static async getInvitationsSent(userId: string) {
+  static async getJoinRequestsSent(userId: string) {
     try {
       const invitations = await prisma.invitation.findMany({
-        where: { fromUserId: userId },
+        where: { 
+          fromUserId: userId,
+          // Only get one invitation per team to avoid duplicates
+        },
         include: {
-          toUser: {
-            select: {
-              displayName: true,
-            }
-          },
           team: {
             select: {
               title: true,
             }
           }
         },
-        orderBy: { sentAt: 'desc' }
+        orderBy: { sentAt: 'desc' },
+        distinct: ['teamId', 'fromUserId']
       });
 
       return invitations.map(inv => ({
         id: inv.id,
-        toUserId: inv.toUserId,
-        toUserDisplayName: inv.toUser.displayName,
         teamId: inv.teamId,
         teamTitle: inv.team.title,
         status: inv.status,
         sentAt: inv.sentAt,
       }));
     } catch (error) {
-      logger.error(`Error getting invitations sent by user ${userId}:`, error);
+      logger.error(`Error getting join requests sent by user ${userId}:`, error);
       throw error;
     }
   }
 
   /**
-   * Get invitations received by a user
+   * Get join requests received by team admins
    */
-  static async getInvitationsReceived(userId: string) {
+  static async getJoinRequestsReceived(adminUserId: string) {
     try {
+      // Get teams where user is admin
+      const adminTeams = await prisma.teamMember.findMany({
+        where: { 
+          userId: adminUserId,
+          isAdmin: true
+        },
+        select: { teamId: true }
+      });
+
+      const teamIds = adminTeams.map(member => member.teamId);
+
       const invitations = await prisma.invitation.findMany({
-        where: { toUserId: userId },
+        where: { 
+          toUserId: adminUserId,
+          teamId: { in: teamIds },
+          status: 'PENDING'
+        },
         include: {
           fromUser: {
             select: {
@@ -317,15 +337,15 @@ export class InvitationService {
         sentAt: inv.sentAt,
       }));
     } catch (error) {
-      logger.error(`Error getting invitations received by user ${userId}:`, error);
+      logger.error(`Error getting join requests received by admin ${adminUserId}:`, error);
       throw error;
     }
   }
 
   /**
-   * Get invitation by ID with details
+   * Get join request by ID with details
    */
-  static async getInvitationById(invitationId: string): Promise<InvitationWithDetails> {
+  static async getJoinRequestById(invitationId: string): Promise<InvitationWithDetails> {
     try {
       const invitation = await prisma.invitation.findUnique({
         where: { id: invitationId },
@@ -349,7 +369,7 @@ export class InvitationService {
       });
 
       if (!invitation) {
-        throw new NotFoundError('Invitation not found');
+        throw new NotFoundError('Join request not found');
       }
 
       return {
@@ -364,7 +384,217 @@ export class InvitationService {
         sentAt: invitation.sentAt,
       };
     } catch (error) {
-      logger.error(`Error getting invitation by ID ${invitationId}:`, error);
+      logger.error(`Error getting join request by ID ${invitationId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if user is a team admin
+   */
+  static async isTeamAdmin(userId: string, teamId: string): Promise<boolean> {
+    try {
+      // Check if user is team creator
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { creatorId: true }
+      });
+
+      if (!team) {
+        return false;
+      }
+
+      if (team.creatorId === userId) {
+        return true;
+      }
+
+      // Check if user is a team member with admin privileges
+      const adminMember = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId,
+            teamId
+          }
+        },
+        select: { isAdmin: true }
+      });
+
+      return adminMember?.isAdmin || false;
+    } catch (error) {
+      logger.error(`Error checking if user ${userId} is admin of team ${teamId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get team admins
+   */
+  static async getTeamAdmins(teamId: string) {
+    try {
+      // Get team creator
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        include: {
+          creator: {
+            select: {
+              user_id: true,
+              displayName: true,
+            }
+          }
+        }
+      });
+
+      if (!team) {
+        throw new NotFoundError('Team not found');
+      }
+
+      // Get team members with admin privileges
+      const adminMembers = await prisma.teamMember.findMany({
+        where: { 
+          teamId,
+          isAdmin: true
+        },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              displayName: true,
+            }
+          }
+        }
+      });
+
+      const admins = [
+        {
+          userId: team.creator.user_id,
+          displayName: team.creator.displayName,
+          isCreator: true,
+          addedAt: new Date() // Creator is added when team is created
+        },
+        ...adminMembers.map(member => ({
+          userId: member.user.user_id,
+          displayName: member.user.displayName,
+          isCreator: false,
+          addedAt: member.joinedAt
+        }))
+      ];
+
+      return admins;
+    } catch (error) {
+      logger.error(`Error getting team admins for team ${teamId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add team admin (creator or existing admin only)
+   */
+  static async addTeamAdmin(teamId: string, userId: string, adminUserId: string) {
+    try {
+      // Check if the user is authorized to add admins
+      const isAuthorized = await this.isTeamAdmin(adminUserId, teamId);
+      if (!isAuthorized) {
+        throw new ForbiddenError('Only team admins can add other admins');
+      }
+
+      // Check if the target user exists
+      const targetUser = await prisma.user.findUnique({
+        where: { user_id: userId }
+      });
+
+      if (!targetUser) {
+        throw new NotFoundError('Target user not found');
+      }
+
+      // Check if the target user is already a team member
+      const existingMember = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId,
+            teamId
+          }
+        }
+      });
+
+      if (!existingMember) {
+        throw new NotFoundError('User is not a member of this team');
+      }
+
+      // Check if the target user is already an admin
+      if (existingMember.isAdmin) {
+        throw new ConflictError('User is already a team admin');
+      }
+
+      // Update the team member to be an admin
+      const updatedMember = await prisma.teamMember.update({
+        where: {
+          userId_teamId: {
+            userId,
+            teamId
+          }
+        },
+        data: { isAdmin: true },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              displayName: true,
+            }
+          }
+        }
+      });
+
+      logger.info(`Team admin added: ${userId} to team ${teamId} by ${adminUserId}`);
+      return {
+        userId: updatedMember.user.user_id,
+        displayName: updatedMember.user.displayName,
+        addedAt: updatedMember.joinedAt
+      };
+    } catch (error) {
+      logger.error(`Error adding team admin ${userId} to team ${teamId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove team admin (creator only)
+   */
+  static async removeTeamAdmin(teamId: string, userId: string, creatorUserId: string) {
+    try {
+      // Check if the user is the team creator
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { creatorId: true }
+      });
+
+      if (!team) {
+        throw new NotFoundError('Team not found');
+      }
+
+      if (team.creatorId !== creatorUserId) {
+        throw new ForbiddenError('Only team creator can remove admins');
+      }
+
+      // Check if trying to remove the creator
+      if (userId === creatorUserId) {
+        throw new ValidationError('Cannot remove team creator as admin');
+      }
+
+      // Update the team member to remove admin privileges
+      await prisma.teamMember.update({
+        where: {
+          userId_teamId: {
+            userId,
+            teamId
+          }
+        },
+        data: { isAdmin: false }
+      });
+
+      logger.info(`Team admin removed: ${userId} from team ${teamId} by creator ${creatorUserId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error removing team admin ${userId} from team ${teamId}:`, error);
       throw error;
     }
   }
