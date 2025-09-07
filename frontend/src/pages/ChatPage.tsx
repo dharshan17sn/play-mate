@@ -58,6 +58,11 @@ export default function ChatPage() {
     const [availableGames, setAvailableGames] = useState<{ id?: string; name: string }[]>([]);
     const [isLoadingGames, setIsLoadingGames] = useState(false);
 
+    // Friends dropdown for starting new chat
+    const [isFriendsDropdownOpen, setIsFriendsDropdownOpen] = useState(false);
+    const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+    const [friends, setFriends] = useState<Array<{ user_id: string; displayName: string; photo?: string }>>([]);
+
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
     const currentUserId = useMemo(() => apiService.getUserIdFromToken(), []);
@@ -92,6 +97,33 @@ export default function ChatPage() {
         return () => {
             cancelled = true;
         };
+    }, []);
+
+    // If friendId is present in query, open or create chat with that friend
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        const friendId = url.searchParams.get('friendId');
+        if (!friendId) return;
+        (async () => {
+            try {
+                const res = await apiService.getOrCreateChat(friendId);
+                const chat = (res as any).data || res;
+                const chatsRes = await apiService.getUserChats();
+                const chatItems = (chatsRes as any).data || [];
+                setChats(chatItems);
+                setActiveTab('messages');
+                setSelectedTeamId(null);
+                setSelectedChatId(chat.id || chat.chatId || chat.chat?.id);
+                setConversation([]);
+            } catch (e: any) {
+                setError(e?.message || 'Failed to start chat');
+            } finally {
+                // Clean the query param to avoid repeat
+                const cleaned = new URL(window.location.href);
+                cleaned.searchParams.delete('friendId');
+                window.history.replaceState({}, document.title, cleaned.toString());
+            }
+        })();
     }, []);
 
     // Load conversation when selection changes
@@ -309,8 +341,88 @@ export default function ChatPage() {
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* Left list always visible in white */}
                 <div style={{ width: 360, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                    <div style={{ padding: 12, borderBottom: '1px solid #f2f2f2', fontWeight: 700 }}>Chats</div>
-                    <div style={{ display: 'flex', borderBottom: '1px solid #f2f2f2' }}>
+                    <div style={{ padding: 12, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+                        <span>Chats</span>
+                        {activeTab === 'messages' && (
+                            <div>
+                                <button
+                                    onClick={async () => {
+                                        setIsFriendsDropdownOpen(prev => !prev);
+                                        if (!isFriendsDropdownOpen && friends.length === 0) {
+                                            setIsLoadingFriends(true);
+                                            try {
+                                                const list = await apiService.listFriends();
+                                                setFriends(list || []);
+                                            } catch (e) {
+                                                setError((e as any)?.message || 'Failed to load friends');
+                                            } finally {
+                                                setIsLoadingFriends(false);
+                                            }
+                                        }
+                                    }}
+                                    title="New chat"
+                                    style={{
+                                        border: '1px solid #e5e7eb',
+                                        background: '#fff',
+                                        borderRadius: 6,
+                                        width: 28,
+                                        height: 28,
+                                        lineHeight: '26px',
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        color: '#111827',
+                                        fontWeight: 700,
+                                    }}
+                                >
+                                    +
+                                </button>
+                                {isFriendsDropdownOpen && (
+                                    <div style={{ position: 'absolute', top: 44, left: 12, right: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', borderRadius: 8, zIndex: 40, maxHeight: 280, overflowY: 'auto' }}>
+                                        <div style={{ padding: 8, borderBottom: '1px solid #f2f2f2', fontWeight: 600, color: '#6b7280' }}>Start new chat</div>
+                                        {isLoadingFriends ? (
+                                            <div style={{ padding: 12 }}>Loading…</div>
+                                        ) : friends.length === 0 ? (
+                                            <div style={{ padding: 12, color: '#6b7280' }}>No friends found</div>
+                                        ) : (
+                                            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                                                {friends.map(f => (
+                                                    <li key={f.user_id}
+                                                        onClick={async () => {
+                                                            try {
+                                                                const res = await apiService.getOrCreateChat(f.user_id);
+                                                                const chat = (res.data as any) || res;
+                                                                const chatsRes = await apiService.getUserChats();
+                                                                const chatItems = (chatsRes.data as any[]) || [];
+                                                                setChats(chatItems);
+                                                                setActiveTab('messages');
+                                                                setSelectedTeamId(null);
+                                                                setSelectedChatId(chat.id || chat.chatId || chat.chat?.id);
+                                                                setConversation([]);
+                                                                setIsFriendsDropdownOpen(false);
+                                                            } catch (e) {
+                                                                setError((e as any)?.message || 'Failed to start chat');
+                                                            }
+                                                        }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f6f6f6' }}
+                                                    >
+                                                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                            {f.photo ? (
+                                                                <img src={f.photo} alt={f.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            ) : (
+                                                                <span style={{ fontWeight: 600 }}>{f.displayName?.[0] ?? '?'}</span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontWeight: 600 }}>{f.displayName}</div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #f2f2f2' }}>
                         <button
                             onClick={() => { setActiveTab('messages'); setSelectedTeamId(null); setSelectedChatId(null); setConversation([]); }}
                             style={{

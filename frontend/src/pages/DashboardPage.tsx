@@ -357,8 +357,7 @@ const DashboardPage: React.FC = () => {
                                             <button
                                                 onClick={() => {
                                                     closeNotificationPanel();
-                                                    navigate('/chat');
-                                                    // TODO: Auto-select this friend's chat
+                                                    navigate(`/chat?friendId=${encodeURIComponent(f.user_id)}`);
                                                 }}
                                                 className="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
                                             >
