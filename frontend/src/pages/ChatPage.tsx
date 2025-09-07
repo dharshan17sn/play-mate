@@ -74,6 +74,7 @@ export default function ChatPage() {
     const [isFriendsDropdownOpen, setIsFriendsDropdownOpen] = useState(false);
     const [isLoadingFriends, setIsLoadingFriends] = useState(false);
     const [friends, setFriends] = useState<Array<{ user_id: string; displayName: string; photo?: string }>>([]);
+    const [friendSearch, setFriendSearch] = useState('');
 
     // Search state
     const [messageSearch, setMessageSearch] = useState('');
@@ -461,18 +462,36 @@ export default function ChatPage() {
                                             fontWeight: 700,
                                         }}
                                     >
-                                        +
+                                        {isFriendsDropdownOpen ? '×' : '+'}
                                     </button>
                                     {isFriendsDropdownOpen && (
                                         <div style={{ position: 'absolute', top: 44, left: 12, right: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', borderRadius: 8, zIndex: 40, maxHeight: 280, overflowY: 'auto' }}>
                                             <div style={{ padding: 8, borderBottom: '1px solid #f2f2f2', fontWeight: 600, color: '#6b7280' }}>Start new chat</div>
+                                            <div style={{ padding: 8, borderBottom: '1px solid #f2f2f2' }}>
+                                                <input
+                                                    value={friendSearch}
+                                                    onChange={(e) => setFriendSearch(e.target.value)}
+                                                    placeholder="Search friends"
+                                                    style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                                />
+                                            </div>
                                             {isLoadingFriends ? (
                                                 <div style={{ padding: 12 }}>Loading…</div>
                                             ) : friends.length === 0 ? (
                                                 <div style={{ padding: 12, color: '#6b7280' }}>No friends found</div>
                                             ) : (
                                                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                                                    {friends.map(f => (
+                                                    {(friends.filter(f => {
+                                                        const q = friendSearch.trim().toLowerCase();
+                                                        if (!q) return true;
+                                                        return (f.displayName || '').toLowerCase().includes(q);
+                                                    })).length === 0 ? (
+                                                        <li style={{ padding: 12, color: '#6b7280' }}>No matches</li>
+                                                    ) : (friends.filter(f => {
+                                                        const q = friendSearch.trim().toLowerCase();
+                                                        if (!q) return true;
+                                                        return (f.displayName || '').toLowerCase().includes(q);
+                                                    })).map(f => (
                                                         <li key={f.user_id}
                                                             onClick={async () => {
                                                                 try {
@@ -486,6 +505,7 @@ export default function ChatPage() {
                                                                     setSelectedChatId(chat.id || chat.chatId || chat.chat?.id);
                                                                     setConversation([]);
                                                                     setIsFriendsDropdownOpen(false);
+                                                                    setFriendSearch('');
                                                                 } catch (e) {
                                                                     setError((e as any)?.message || 'Failed to start chat');
                                                                 }
