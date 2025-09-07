@@ -309,6 +309,21 @@ export default function ChatPage() {
         }
     }, [conversation]);
 
+    // ESC key to exit active conversation back to list
+    useEffect(() => {
+        function onKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Escape') {
+                if (selectedChatId || selectedTeamId) {
+                    setSelectedChatId(null);
+                    setSelectedTeamId(null);
+                    navigate('/chat', { replace: true });
+                }
+            }
+        }
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [selectedChatId, selectedTeamId]);
+
     const recentChats = useMemo(() => {
         // Map chats to show the other participant and last message
         return chats.map(c => {
