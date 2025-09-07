@@ -38,6 +38,8 @@ export default function ProfileCreationPage() {
     timeRange: [] as string[],
   });
 
+  const hasPreferredDays = formData.preferredDays && formData.preferredDays.length > 0;
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -107,6 +109,13 @@ export default function ProfileCreationPage() {
     }));
   };
 
+  useEffect(() => {
+    // If preferred days become empty, clear any selected time ranges
+    if (!hasPreferredDays && formData.timeRange.length > 0) {
+      setFormData(prev => ({ ...prev, timeRange: [] }));
+    }
+  }, [hasPreferredDays]);
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -136,7 +145,7 @@ export default function ProfileCreationPage() {
       console.log('Adding preferredDays:', formData.preferredDays);
       submitData.preferredDays = formData.preferredDays;
     }
-    if (formData.timeRange && formData.timeRange.length > 0) {
+    if (formData.timeRange && formData.timeRange.length > 0 && formData.preferredDays && formData.preferredDays.length > 0) {
       console.log('Adding timeRange:', formData.timeRange);
       submitData.timeRange = formData.timeRange;
     }
@@ -322,7 +331,7 @@ export default function ProfileCreationPage() {
 
         {/* Edit Profile Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-white flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
@@ -535,12 +544,16 @@ export default function ProfileCreationPage() {
                                   : prev.timeRange.filter(t => t !== value)
                               }));
                             }}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!hasPreferredDays}
                           />
                           <span className="ml-2 text-sm text-gray-700">{timeRange}</span>
                         </label>
                       ))}
                     </div>
+                    {!hasPreferredDays && (
+                      <p className="mt-1 text-xs text-gray-500">Select at least one preferred day to choose time ranges.</p>
+                    )}
                   </div>
 
                   <div className="flex justify-end">
