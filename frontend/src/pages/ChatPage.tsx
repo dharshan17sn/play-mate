@@ -703,7 +703,7 @@ export default function ChatPage() {
                                                     </div>
                                                     {((team as any).gameName || (team as any).game?.name) ? (
                                                         <div style={{ color: '#6b7280', fontSize: 14 }}>
-                                                            Game: {((team as any).gameName || (team as any).game?.name)}
+                                                            {((team as any).gameName || (team as any).game?.name)}
                                                         </div>
                                                     ) : null}
                                                 </li>
