@@ -76,6 +76,12 @@ export default function ChatPage() {
     const [friends, setFriends] = useState<Array<{ user_id: string; displayName: string; photo?: string }>>([]);
     const [friendSearch, setFriendSearch] = useState('');
 
+    // Team info panel state
+    const [isTeamInfoOpen, setIsTeamInfoOpen] = useState(false);
+    const [teamInfoTab, setTeamInfoTab] = useState<'overview' | 'members'>('overview');
+    const [teamDetails, setTeamDetails] = useState<any | null>(null);
+    const [isLoadingTeamDetails, setIsLoadingTeamDetails] = useState(false);
+
     // Search state
     const [messageSearch, setMessageSearch] = useState('');
     const [teamSearch, setTeamSearch] = useState('');
@@ -718,7 +724,7 @@ export default function ChatPage() {
 
                 {/* Right conversation - hidden entirely on mobile unless a conversation is active */}
                 {(!isMobile || hasActiveConversation) && (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6', position: 'relative' }}>
                         {selectedHeader ? (
                             <>
                                 <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
@@ -733,7 +739,26 @@ export default function ChatPage() {
                                             </span>
                                         )}
                                     </div>
-                                    <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedHeader.title}</div>
+                                    <div
+                                        style={{ fontWeight: 800, fontSize: 18, cursor: selectedTeamId ? 'pointer' : 'default' }}
+                                        onClick={async () => {
+                                            if (!selectedTeamId) return;
+                                            setIsTeamInfoOpen(true);
+                                            setIsLoadingTeamDetails(true);
+                                            try {
+                                                const res = await apiService.getTeamById(selectedTeamId);
+                                                setTeamDetails((res as any).data || res);
+                                            } catch (e: any) {
+                                                setError(e?.message || 'Failed to load team');
+                                                setTeamDetails(null);
+                                            } finally {
+                                                setIsLoadingTeamDetails(false);
+                                            }
+                                        }}
+                                        title={selectedTeamId ? 'View team info' : undefined}
+                                    >
+                                        {selectedHeader.title}
+                                    </div>
                                 </div>
 
                                 <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f5f6f6' }}>
@@ -791,6 +816,134 @@ export default function ChatPage() {
                     </div>
                 )}
             </div>
+            {/* Team Info Panel (compact popover on desktop, full page on mobile) */}
+            {isTeamInfoOpen && selectedTeamId && (
+                isMobile ? (
+                    <div style={{ position: 'fixed', inset: 0, background: '#fff', display: 'flex', flexDirection: 'column', zIndex: 60 }}>
+                        <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button onClick={() => setIsTeamInfoOpen(false)} style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
+                                <span style={{ fontWeight: 700 }}>Team Info</span>
+                            </div>
+                        </div>
+                        {isLoadingTeamDetails ? (
+                            <div style={{ padding: 16 }}>Loading…</div>
+                        ) : !teamDetails ? (
+                            <div style={{ padding: 16, color: '#6b7280' }}>No team info available.</div>
+                        ) : (
+                            <div style={{ padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {teamDetails.photo ? (
+                                        <img src={teamDetails.photo} alt={teamDetails.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <span style={{ fontWeight: 700 }}>{(teamDetails.title || '?')[0]}</span>
+                                    )}
+                                </div>
+                                <div style={{ fontWeight: 800, fontSize: 20 }}>{teamDetails.title}</div>
+                                <div style={{ color: '#374151' }}>{teamDetails.gameName || teamDetails.game?.name || '—'}</div>
+                                <div style={{ color: '#374151' }}>Created: {teamDetails.createdAt ? new Date(teamDetails.createdAt).toLocaleString() : '—'}</div>
+                                <div style={{ color: '#374151' }}>{teamDetails.description || 'Add description'}</div>
+                                <div style={{ marginTop: 8, fontWeight: 700 }}>Members</div>
+                                {Array.isArray(teamDetails.members) && teamDetails.members.length > 0 ? (
+                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                        {teamDetails.members.map((m: any) => (
+                                            <li key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {m.photo ? (
+                                                        <img src={m.photo} alt={m.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <span style={{ fontWeight: 700 }}>{(m.displayName || '?')[0]}</span>
+                                                    )}
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ fontWeight: 600 }}>{m.displayName}</span>
+                                                        {m.isAdmin ? (
+                                                            <span style={{ background: '#e0e7ff', color: '#1d4ed8', fontSize: 12, borderRadius: 9999, padding: '2px 8px', fontWeight: 700 }}>Admin</span>
+                                                        ) : null}
+                                                    </div>
+                                                    {m.status && (
+                                                        <div style={{ color: '#6b7280', fontSize: 12 }}>{m.status}</div>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div style={{ color: '#6b7280' }}>No members to show.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div style={{ position: 'absolute', top: 56, left: 360, width: 700, height: '70%', minWidth: 640, minHeight: 420, background: '#fff', border: '1px solid #eee', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', borderRadius: 10, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontWeight: 700 }}>Team Info</span>
+                            <button onClick={() => setIsTeamInfoOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18 }}>×</button>
+                        </div>
+                        {isLoadingTeamDetails ? (
+                            <div style={{ padding: 16 }}>Loading…</div>
+                        ) : !teamDetails ? (
+                            <div style={{ padding: 16, color: '#6b7280' }}>No team info available.</div>
+                        ) : (
+                            <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                                <div style={{ width: 220, borderRight: '1px solid #f2f2f2', display: 'flex', flexDirection: 'column' }}>
+                                    <button onClick={() => setTeamInfoTab('overview')} style={{ textAlign: 'left', padding: '12px 14px', border: 'none', background: teamInfoTab === 'overview' ? '#eef2ff' : '#fff', color: teamInfoTab === 'overview' ? '#1d4ed8' : '#374151', fontWeight: 600, cursor: 'pointer' }}>Overview</button>
+                                    <button onClick={() => setTeamInfoTab('members')} style={{ textAlign: 'left', padding: '12px 14px', border: 'none', background: teamInfoTab === 'members' ? '#eef2ff' : '#fff', color: teamInfoTab === 'members' ? '#1d4ed8' : '#374151', fontWeight: 600, cursor: 'pointer' }}>Members</button>
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto' }}>
+                                    {teamInfoTab === 'overview' ? (
+                                        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {teamDetails.photo ? (
+                                                    <img src={teamDetails.photo} alt={teamDetails.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <span style={{ fontWeight: 700 }}>{(teamDetails.title || '?')[0]}</span>
+                                                )}
+                                            </div>
+                                            <div style={{ fontWeight: 800, fontSize: 20 }}>{teamDetails.title}</div>
+                                            <div style={{ color: '#374151' }}>Game: {teamDetails.gameName || teamDetails.game?.name || '—'}</div>
+                                            <div style={{ color: '#374151' }}>Created: {teamDetails.createdAt ? new Date(teamDetails.createdAt).toLocaleString() : '—'}</div>
+                                            <div style={{ color: '#374151' }}>Description: {teamDetails.description || 'Add description'}</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: 16 }}>
+                                            {Array.isArray(teamDetails.members) && teamDetails.members.length > 0 ? (
+                                                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                                    {teamDetails.members.map((m: any) => (
+                                                        <li key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                                                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {m.photo ? (
+                                                                    <img src={m.photo} alt={m.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <span style={{ fontWeight: 700 }}>{(m.displayName || '?')[0]}</span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                    <span style={{ fontWeight: 600 }}>{m.displayName}</span>
+                                                                    {m.isAdmin ? (
+                                                                        <span style={{ background: '#e0e7ff', color: '#1d4ed8', fontSize: 12, borderRadius: 9999, padding: '2px 8px', fontWeight: 700 }}>Admin</span>
+                                                                    ) : null}
+                                                                </div>
+                                                                {m.status && (
+                                                                    <div style={{ color: '#6b7280', fontSize: 12 }}>{m.status}</div>
+                                                                )}
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <div style={{ color: '#6b7280' }}>No members to show.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )
+            )}
             {/* Create Team Modal */}
             {isCreateTeamOpen && (
                 <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
