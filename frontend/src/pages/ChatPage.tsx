@@ -63,6 +63,10 @@ export default function ChatPage() {
     const [isLoadingFriends, setIsLoadingFriends] = useState(false);
     const [friends, setFriends] = useState<Array<{ user_id: string; displayName: string; photo?: string }>>([]);
 
+    // Search state
+    const [messageSearch, setMessageSearch] = useState('');
+    const [teamSearch, setTeamSearch] = useState('');
+
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
     const currentUserId = useMemo(() => apiService.getUserIdFromToken(), []);
@@ -259,6 +263,22 @@ export default function ChatPage() {
         });
     }, [chats, currentUserId]);
 
+    const filteredRecentChats = useMemo(() => {
+        const q = messageSearch.trim().toLowerCase();
+        if (!q) return recentChats;
+        return recentChats.filter(rc =>
+            rc.name?.toLowerCase().includes(q) || rc.lastMessage?.toLowerCase().includes(q)
+        );
+    }, [recentChats, messageSearch]);
+
+    const filteredTeams = useMemo(() => {
+        const q = teamSearch.trim().toLowerCase();
+        if (!q) return teams;
+        return teams.filter(t =>
+            t.title?.toLowerCase().includes(q) || (t.gameName || '').toLowerCase().includes(q)
+        );
+    }, [teams, teamSearch]);
+
     const selectedHeader = useMemo(() => {
         if (activeTab === 'messages' && selectedChatId) {
             const chat = chats.find(c => c.id === selectedChatId);
@@ -341,8 +361,11 @@ export default function ChatPage() {
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* Left list always visible in white */}
                 <div style={{ width: 360, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                    <div style={{ padding: 12, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-                        <span>Chats</span>
+                    <div style={{ padding: 14, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, position: 'relative' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <button onClick={() => window.history.back()} title="Back" style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
+                            <span style={{ fontSize: 18 }}>Chats</span>
+                        </div>
                         {activeTab === 'messages' && (
                             <div>
                                 <button
@@ -456,14 +479,22 @@ export default function ChatPage() {
                     <div style={{ overflowY: 'auto' }}>
                         {activeTab === 'messages' && (
                             <>
-                                <div style={{ padding: '8px 12px', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #f2f2f2' }}>Recent chats</div>
+                                <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
+                                    <input
+                                        value={messageSearch}
+                                        onChange={(e) => setMessageSearch(e.target.value)}
+                                        placeholder="Search chats"
+                                        style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                    />
+                                </div>
+                                <div style={{ padding: '10px 12px', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid #f2f2f2', fontSize: 14 }}>Recent chats</div>
                                 {loadingChats ? (
                                     <div style={{ padding: 12 }}>Loading…</div>
-                                ) : recentChats.length === 0 ? (
+                                ) : filteredRecentChats.length === 0 ? (
                                     <div style={{ padding: 12 }}>No recent chats</div>
                                 ) : (
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                        {recentChats.map(item => (
+                                        {filteredRecentChats.map(item => (
                                             <li
                                                 key={item.id}
                                                 style={{
@@ -487,8 +518,8 @@ export default function ChatPage() {
                                                     )}
                                                 </div>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-                                                    <div style={{ color: '#6b7280', fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.lastMessage}</div>
+                                                    <div style={{ fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                                    <div style={{ color: '#6b7280', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.lastMessage}</div>
                                                 </div>
                                             </li>
                                         ))}
@@ -499,6 +530,14 @@ export default function ChatPage() {
 
                         {activeTab === 'teams' && (
                             <>
+                                <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
+                                    <input
+                                        value={teamSearch}
+                                        onChange={(e) => setTeamSearch(e.target.value)}
+                                        placeholder="Search teams"
+                                        style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                    />
+                                </div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #f2f2f2' }}>
                                     <span>My Teams</span>
                                     <button
@@ -522,11 +561,11 @@ export default function ChatPage() {
                                 </div>
                                 {loadingTeams ? (
                                     <div style={{ padding: 12 }}>Loading…</div>
-                                ) : teams.length === 0 ? (
-                                    <div style={{ padding: 12 }}>You are not in any teams yet</div>
+                                ) : filteredTeams.length === 0 ? (
+                                    <div style={{ padding: 12 }}>No teams</div>
                                 ) : (
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                        {teams.map(team => (
+                                        {filteredTeams.map(team => (
                                             <li
                                                 key={team.id}
                                                 style={{
@@ -553,27 +592,27 @@ export default function ChatPage() {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6' }}>
                     {selectedHeader ? (
                         <>
-                            <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
-                                <div style={{ fontWeight: 700 }}>{selectedHeader.title}</div>
+                            <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
+                                <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedHeader.title}</div>
                             </div>
 
-                            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 12, background: '#f5f6f6' }}>
+                            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f5f6f6' }}>
                                 {isLoadingConversation ? (
                                     <div>Loading conversation…</div>
                                 ) : conversation.length === 0 ? (
-                                    <div style={{ color: '#6b7280' }}>No messages yet</div>
+                                    <div style={{ color: '#6b7280', fontSize: 15 }}>No messages yet</div>
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         {conversation.map((m: any) => {
                                             const isMine = typeof m.sender === 'string' ? m.sender === currentUserId : m.sender?.user_id === currentUserId;
                                             return (
                                                 <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
                                                     <div style={{
-                                                        maxWidth: '70%', padding: '8px 12px', borderRadius: 12,
+                                                        maxWidth: '72%', padding: '10px 14px', borderRadius: 14,
                                                         background: isMine ? '#dcf8c6' : '#fff',
                                                         border: '1px solid #e5e7eb',
                                                         whiteSpace: 'pre-wrap',
-                                                        wordBreak: 'break-word',
+                                                        wordBreak: 'break-word', fontSize: 15,
                                                     }}>
                                                         {m.content}
                                                     </div>
@@ -584,15 +623,15 @@ export default function ChatPage() {
                                 )}
                             </div>
 
-                            <div style={{ padding: 12, borderTop: '1px solid #eee', display: 'flex', gap: 8, background: '#f5f6f6' }}>
+                            <div style={{ padding: 12, borderTop: '1px solid #eee', display: 'flex', gap: 10, background: '#f5f6f6' }}>
                                 <input
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
                                     placeholder={'Type a message'}
-                                    style={{ flex: 1, border: '1px solid #ddd', borderRadius: 20, padding: '10px 14px' }}
+                                    style={{ flex: 1, border: '1px solid #ddd', borderRadius: 22, padding: '12px 16px', fontSize: 15 }}
                                 />
-                                <button onClick={handleSend} disabled={!messageInput.trim()} style={{ padding: '10px 16px', borderRadius: 20, border: '1px solid #111827', background: '#111827', color: '#fff' }}>
+                                <button onClick={handleSend} disabled={!messageInput.trim()} style={{ padding: '12px 18px', borderRadius: 22, border: '1px solid #111827', background: '#111827', color: '#fff', fontWeight: 600 }}>
                                     Send
                                 </button>
                             </div>
