@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiService, type TeamSummary } from '../services/api';
 import { getSocket } from '../services/socket';
 
@@ -30,7 +31,14 @@ type TeamMessage = {
 };
 
 export default function ChatPage() {
-    const [activeTab, setActiveTab] = useState<'messages' | 'teams'>('messages');
+    const navigate = useNavigate();
+    const { chatId: routeChatId, teamId: routeTeamId } = useParams();
+    const isMobile = useMemo(() => window.matchMedia('(max-width: 768px)').matches, []);
+    const [activeTab, setActiveTab] = useState<'messages' | 'teams'>(() => {
+        const url = new URL(window.location.href);
+        const tab = url.searchParams.get('tab');
+        return tab === 'teams' ? 'teams' : 'messages';
+    });
     const [loadingChats, setLoadingChats] = useState(false);
     const [loadingTeams, setLoadingTeams] = useState(false);
     const [chats, setChats] = useState<ChatListItem[]>([]);
@@ -129,6 +137,44 @@ export default function ChatPage() {
             }
         })();
     }, []);
+
+    // Keep the tab in the URL so refresh preserves current tab (only when not in a specific chat/team route)
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        // If viewing specific chat/team via path, don't change URL params here
+        if (routeChatId || routeTeamId) return;
+        if (activeTab === 'teams') {
+            url.searchParams.set('tab', 'teams');
+        } else {
+            url.searchParams.delete('tab');
+        }
+        window.history.replaceState({}, document.title, url.toString());
+    }, [activeTab, routeChatId, routeTeamId]);
+
+    // On small screens, navigate to dedicated routes when a chat/team is selected
+    useEffect(() => {
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (!isMobile) return;
+        if (activeTab === 'messages' && selectedChatId) {
+            navigate(`/chat/c/${encodeURIComponent(selectedChatId)}`, { replace: true });
+        } else if (activeTab === 'teams' && selectedTeamId) {
+            navigate(`/chat/t/${encodeURIComponent(selectedTeamId)}`, { replace: true });
+        }
+    }, [activeTab, selectedChatId, selectedTeamId]);
+
+    // If route contains a chatId or teamId, select it (useful for mobile deep links). This persists on refresh too.
+    useEffect(() => {
+        if (routeChatId) {
+            setActiveTab('messages');
+            setSelectedTeamId(null);
+            setSelectedChatId(routeChatId as string);
+        } else if (routeTeamId) {
+            setActiveTab('teams');
+            setSelectedChatId(null);
+            setSelectedTeamId(routeTeamId as string);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [routeChatId, routeTeamId]);
 
     // Load conversation when selection changes
     useEffect(() => {
@@ -351,6 +397,9 @@ export default function ChatPage() {
         }
     }
 
+    const hasActiveConversation = !!selectedHeader || !!routeChatId || !!routeTeamId;
+    const showListPanel = !(isMobile && hasActiveConversation);
+
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f6f6' }}>
 
@@ -359,190 +408,32 @@ export default function ChatPage() {
             )}
 
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-                {/* Left list always visible in white */}
-                <div style={{ width: 360, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                    <div style={{ padding: 14, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, position: 'relative' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <button onClick={() => window.history.back()} title="Back" style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
-                            <span style={{ fontSize: 18 }}>Chats</span>
-                        </div>
-                        {activeTab === 'messages' && (
-                            <div>
-                                <button
-                                    onClick={async () => {
-                                        setIsFriendsDropdownOpen(prev => !prev);
-                                        if (!isFriendsDropdownOpen && friends.length === 0) {
-                                            setIsLoadingFriends(true);
-                                            try {
-                                                const list = await apiService.listFriends();
-                                                setFriends(list || []);
-                                            } catch (e) {
-                                                setError((e as any)?.message || 'Failed to load friends');
-                                            } finally {
-                                                setIsLoadingFriends(false);
-                                            }
-                                        }
-                                    }}
-                                    title="New chat"
-                                    style={{
-                                        border: '1px solid #e5e7eb',
-                                        background: '#fff',
-                                        borderRadius: 6,
-                                        width: 28,
-                                        height: 28,
-                                        lineHeight: '26px',
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        color: '#111827',
-                                        fontWeight: 700,
-                                    }}
-                                >
-                                    +
-                                </button>
-                                {isFriendsDropdownOpen && (
-                                    <div style={{ position: 'absolute', top: 44, left: 12, right: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', borderRadius: 8, zIndex: 40, maxHeight: 280, overflowY: 'auto' }}>
-                                        <div style={{ padding: 8, borderBottom: '1px solid #f2f2f2', fontWeight: 600, color: '#6b7280' }}>Start new chat</div>
-                                        {isLoadingFriends ? (
-                                            <div style={{ padding: 12 }}>Loading…</div>
-                                        ) : friends.length === 0 ? (
-                                            <div style={{ padding: 12, color: '#6b7280' }}>No friends found</div>
-                                        ) : (
-                                            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                                                {friends.map(f => (
-                                                    <li key={f.user_id}
-                                                        onClick={async () => {
-                                                            try {
-                                                                const res = await apiService.getOrCreateChat(f.user_id);
-                                                                const chat = (res.data as any) || res;
-                                                                const chatsRes = await apiService.getUserChats();
-                                                                const chatItems = (chatsRes.data as any[]) || [];
-                                                                setChats(chatItems);
-                                                                setActiveTab('messages');
-                                                                setSelectedTeamId(null);
-                                                                setSelectedChatId(chat.id || chat.chatId || chat.chat?.id);
-                                                                setConversation([]);
-                                                                setIsFriendsDropdownOpen(false);
-                                                            } catch (e) {
-                                                                setError((e as any)?.message || 'Failed to start chat');
-                                                            }
-                                                        }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f6f6f6' }}
-                                                    >
-                                                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                                                            {f.photo ? (
-                                                                <img src={f.photo} alt={f.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                            ) : (
-                                                                <span style={{ fontWeight: 600 }}>{f.displayName?.[0] ?? '?'}</span>
-                                                            )}
-                                                        </div>
-                                                        <div style={{ fontWeight: 600 }}>{f.displayName}</div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                )}
+                {/* Left list - hidden on mobile when a conversation is open */}
+                {showListPanel && (
+                    <div style={{ width: '100%', maxWidth: 360, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: 14, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, position: 'relative' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button onClick={() => navigate('/dashboard')} title="Back" style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
+                                <span style={{ fontSize: 18 }}>Chats</span>
                             </div>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #f2f2f2' }}>
-                        <button
-                            onClick={() => { setActiveTab('messages'); setSelectedTeamId(null); setSelectedChatId(null); setConversation([]); }}
-                            style={{
-                                flex: 1,
-                                padding: '10px 12px',
-                                border: 'none',
-                                borderRight: '1px solid #f2f2f2',
-                                background: activeTab === 'messages' ? '#e9f2ff' : '#fff',
-                                color: activeTab === 'messages' ? '#1d4ed8' : '#6b7280',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Messaging
-                        </button>
-                        <button
-                            onClick={() => { setActiveTab('teams'); setSelectedChatId(null); setConversation([]); }}
-                            style={{
-                                flex: 1,
-                                padding: '10px 12px',
-                                border: 'none',
-                                background: activeTab === 'teams' ? '#e9f2ff' : '#fff',
-                                color: activeTab === 'teams' ? '#1d4ed8' : '#6b7280',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Teams
-                        </button>
-                    </div>
-                    <div style={{ overflowY: 'auto' }}>
-                        {activeTab === 'messages' && (
-                            <>
-                                <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
-                                    <input
-                                        value={messageSearch}
-                                        onChange={(e) => setMessageSearch(e.target.value)}
-                                        placeholder="Search chats"
-                                        style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
-                                    />
-                                </div>
-                                <div style={{ padding: '10px 12px', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid #f2f2f2', fontSize: 14 }}>Recent chats</div>
-                                {loadingChats ? (
-                                    <div style={{ padding: 12 }}>Loading…</div>
-                                ) : filteredRecentChats.length === 0 ? (
-                                    <div style={{ padding: 12 }}>No recent chats</div>
-                                ) : (
-                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                        {filteredRecentChats.map(item => (
-                                            <li
-                                                key={item.id}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: 12,
-                                                    padding: '10px 12px', borderBottom: '1px solid #f6f6f6',
-                                                    background: selectedChatId === item.id ? '#f9fafb' : 'transparent',
-                                                    cursor: 'pointer',
-                                                }}
-                                                onClick={() => { setSelectedChatId(item.id); setSelectedTeamId(null); }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        width: 40, height: 40, borderRadius: '50%', background: '#e5e7eb',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {item.photo ? (
-                                                        <img src={item.photo} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                    ) : (
-                                                        <span style={{ fontWeight: 600 }}>{item.name?.[0] ?? '?'}</span>
-                                                    )}
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-                                                    <div style={{ color: '#6b7280', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.lastMessage}</div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </>
-                        )}
-
-                        {activeTab === 'teams' && (
-                            <>
-                                <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
-                                    <input
-                                        value={teamSearch}
-                                        onChange={(e) => setTeamSearch(e.target.value)}
-                                        placeholder="Search teams"
-                                        style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #f2f2f2' }}>
-                                    <span>My Teams</span>
+                            {activeTab === 'messages' && (
+                                <div>
                                     <button
-                                        onClick={() => setIsCreateTeamOpen(true)}
-                                        title="Create team"
+                                        onClick={async () => {
+                                            setIsFriendsDropdownOpen(prev => !prev);
+                                            if (!isFriendsDropdownOpen && friends.length === 0) {
+                                                setIsLoadingFriends(true);
+                                                try {
+                                                    const list = await apiService.listFriends();
+                                                    setFriends(list || []);
+                                                } catch (e) {
+                                                    setError((e as any)?.message || 'Failed to load friends');
+                                                } finally {
+                                                    setIsLoadingFriends(false);
+                                                }
+                                            }
+                                        }}
+                                        title="New chat"
                                         style={{
                                             border: '1px solid #e5e7eb',
                                             background: '#fff',
@@ -558,41 +449,203 @@ export default function ChatPage() {
                                     >
                                         +
                                     </button>
+                                    {isFriendsDropdownOpen && (
+                                        <div style={{ position: 'absolute', top: 44, left: 12, right: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', borderRadius: 8, zIndex: 40, maxHeight: 280, overflowY: 'auto' }}>
+                                            <div style={{ padding: 8, borderBottom: '1px solid #f2f2f2', fontWeight: 600, color: '#6b7280' }}>Start new chat</div>
+                                            {isLoadingFriends ? (
+                                                <div style={{ padding: 12 }}>Loading…</div>
+                                            ) : friends.length === 0 ? (
+                                                <div style={{ padding: 12, color: '#6b7280' }}>No friends found</div>
+                                            ) : (
+                                                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                                                    {friends.map(f => (
+                                                        <li key={f.user_id}
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const res = await apiService.getOrCreateChat(f.user_id);
+                                                                    const chat = (res.data as any) || res;
+                                                                    const chatsRes = await apiService.getUserChats();
+                                                                    const chatItems = (chatsRes.data as any[]) || [];
+                                                                    setChats(chatItems);
+                                                                    setActiveTab('messages');
+                                                                    setSelectedTeamId(null);
+                                                                    setSelectedChatId(chat.id || chat.chatId || chat.chat?.id);
+                                                                    setConversation([]);
+                                                                    setIsFriendsDropdownOpen(false);
+                                                                } catch (e) {
+                                                                    setError((e as any)?.message || 'Failed to start chat');
+                                                                }
+                                                            }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f6f6f6' }}
+                                                        >
+                                                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                                {f.photo ? (
+                                                                    <img src={f.photo} alt={f.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <span style={{ fontWeight: 600 }}>{f.displayName?.[0] ?? '?'}</span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ fontWeight: 600 }}>{f.displayName}</div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                {loadingTeams ? (
-                                    <div style={{ padding: 12 }}>Loading…</div>
-                                ) : filteredTeams.length === 0 ? (
-                                    <div style={{ padding: 12 }}>No teams</div>
-                                ) : (
-                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                        {filteredTeams.map(team => (
-                                            <li
-                                                key={team.id}
-                                                style={{
-                                                    padding: '10px 12px', borderBottom: '1px solid #f6f6f6',
-                                                    background: selectedTeamId === team.id ? '#f9fafb' : 'transparent',
-                                                    cursor: 'pointer',
-                                                }}
-                                                onClick={() => { setSelectedTeamId(team.id); setSelectedChatId(null); }}
-                                            >
-                                                <div style={{ fontWeight: 600 }}>{team.title}</div>
-                                                {team.gameName && (
-                                                    <div style={{ color: '#6b7280', fontSize: 14 }}>{team.gameName}</div>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </>
-                        )}
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #f2f2f2' }}>
+                            <button
+                                onClick={() => { setActiveTab('messages'); setSelectedTeamId(null); setSelectedChatId(null); setConversation([]); }}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 12px',
+                                    border: 'none',
+                                    borderRight: '1px solid #f2f2f2',
+                                    background: activeTab === 'messages' ? '#e9f2ff' : '#fff',
+                                    color: activeTab === 'messages' ? '#1d4ed8' : '#6b7280',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Messaging
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab('teams'); setSelectedChatId(null); setConversation([]); }}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 12px',
+                                    border: 'none',
+                                    background: activeTab === 'teams' ? '#e9f2ff' : '#fff',
+                                    color: activeTab === 'teams' ? '#1d4ed8' : '#6b7280',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Teams
+                            </button>
+                        </div>
+                        <div style={{ overflowY: 'auto' }}>
+                            {activeTab === 'messages' && (
+                                <>
+                                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
+                                        <input
+                                            value={messageSearch}
+                                            onChange={(e) => setMessageSearch(e.target.value)}
+                                            placeholder="Search chats"
+                                            style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                        />
+                                    </div>
+                                    <div style={{ padding: '10px 12px', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid #f2f2f2', fontSize: 14 }}>Recent chats</div>
+                                    {loadingChats ? (
+                                        <div style={{ padding: 12 }}>Loading…</div>
+                                    ) : filteredRecentChats.length === 0 ? (
+                                        <div style={{ padding: 12 }}>No recent chats</div>
+                                    ) : (
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                            {filteredRecentChats.map(item => (
+                                                <li
+                                                    key={item.id}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 12,
+                                                        padding: '10px 12px', borderBottom: '1px solid #f6f6f6',
+                                                        background: selectedChatId === item.id ? '#f9fafb' : 'transparent',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onClick={() => { setSelectedChatId(item.id); setSelectedTeamId(null); }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            width: 40, height: 40, borderRadius: '50%', background: '#e5e7eb',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        {item.photo ? (
+                                                            <img src={item.photo} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <span style={{ fontWeight: 600 }}>{item.name?.[0] ?? '?'}</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                                        <div style={{ color: '#6b7280', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.lastMessage}</div>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </>
+                            )}
+
+                            {activeTab === 'teams' && (
+                                <>
+                                    <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f2f2', background: '#fff' }}>
+                                        <input
+                                            value={teamSearch}
+                                            onChange={(e) => setTeamSearch(e.target.value)}
+                                            placeholder="Search teams"
+                                            style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #f2f2f2' }}>
+                                        <span>My Teams</span>
+                                        <button
+                                            onClick={() => setIsCreateTeamOpen(true)}
+                                            title="Create team"
+                                            style={{
+                                                border: '1px solid #e5e7eb',
+                                                background: '#fff',
+                                                borderRadius: 6,
+                                                width: 28,
+                                                height: 28,
+                                                lineHeight: '26px',
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                color: '#111827',
+                                                fontWeight: 700,
+                                            }}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    {loadingTeams ? (
+                                        <div style={{ padding: 12 }}>Loading…</div>
+                                    ) : filteredTeams.length === 0 ? (
+                                        <div style={{ padding: 12 }}>No teams</div>
+                                    ) : (
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                            {filteredTeams.map(team => (
+                                                <li
+                                                    key={team.id}
+                                                    style={{
+                                                        padding: '10px 12px', borderBottom: '1px solid #f6f6f6',
+                                                        background: selectedTeamId === team.id ? '#f9fafb' : 'transparent',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onClick={() => { setSelectedTeamId(team.id); setSelectedChatId(null); }}
+                                                >
+                                                    <div style={{ fontWeight: 600 }}>{team.title}</div>
+                                                    {team.gameName && (
+                                                        <div style={{ color: '#6b7280', fontSize: 14 }}>{team.gameName}</div>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Right conversation */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6' }}>
                     {selectedHeader ? (
                         <>
                             <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
+                                {/* Mobile-only back button to list (go to chat list) */}
+                                <button onClick={() => { setSelectedChatId(null); setSelectedTeamId(null); navigate('/chat', { replace: true }); }} style={{ display: isMobile ? 'inline-flex' : 'none', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
                                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {selectedHeader.photo ? (
                                         <img src={selectedHeader.photo as any} alt={selectedHeader.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -646,7 +699,12 @@ export default function ChatPage() {
                             </div>
                         </>
                     ) : (
-                        <div style={{ flex: 1 }} />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f6f6' }}>
+                            <div style={{ textAlign: 'center', color: '#4b5563', padding: 24 }}>
+                                <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Start a conversation</div>
+                                <div style={{ fontSize: 14 }}>Select a chat from the left or tap the + to start a new one.</div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

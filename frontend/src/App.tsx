@@ -60,6 +60,22 @@ function App() {
           }
         />
         <Route
+          path="/chat/c/:chatId"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/t/:teamId"
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/team/messages"
           element={
             <ProtectedRoute>
