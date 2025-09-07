@@ -593,6 +593,15 @@ export default function ChatPage() {
                     {selectedHeader ? (
                         <>
                             <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
+                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {selectedHeader.photo ? (
+                                        <img src={selectedHeader.photo as any} alt={selectedHeader.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <span style={{ fontWeight: 700 }}>
+                                            {selectedHeader.title?.[0]?.toUpperCase() || '?'}
+                                        </span>
+                                    )}
+                                </div>
                                 <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedHeader.title}</div>
                             </div>
 
