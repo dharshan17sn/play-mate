@@ -33,7 +33,10 @@ type TeamMessage = {
 export default function ChatPage() {
     const navigate = useNavigate();
     const { chatId: routeChatId, teamId: routeTeamId } = useParams();
-    const isMobile = useMemo(() => window.matchMedia('(max-width: 768px)').matches, []);
+    // Responsive state
+    const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const isMobile = viewportWidth <= 768;
+    const isTablet = viewportWidth > 768 && viewportWidth < 1200;
     const [activeTab, setActiveTab] = useState<'messages' | 'teams'>(() => {
         const url = new URL(window.location.href);
         const tab = url.searchParams.get('tab');
@@ -161,6 +164,15 @@ export default function ChatPage() {
             navigate(`/chat/t/${encodeURIComponent(selectedTeamId)}`, { replace: true });
         }
     }, [activeTab, selectedChatId, selectedTeamId]);
+
+    // Track viewport size for responsive layout adjustments
+    useEffect(() => {
+        function onResize() {
+            setViewportWidth(window.innerWidth);
+        }
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     // If route contains a chatId or teamId, select it (useful for mobile deep links). This persists on refresh too.
     useEffect(() => {
@@ -410,7 +422,7 @@ export default function ChatPage() {
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* Left list - hidden on mobile when a conversation is open */}
                 {showListPanel && (
-                    <div style={{ width: '100%', maxWidth: 360, borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                    <div style={{ width: isMobile ? '100%' : (isTablet ? 320 : 360), borderRight: isMobile ? 'none' : '1px solid #eee', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: 14, borderBottom: '1px solid #f2f2f2', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, position: 'relative' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <button onClick={() => navigate('/dashboard')} title="Back" style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
@@ -639,74 +651,80 @@ export default function ChatPage() {
                     </div>
                 )}
 
-                {/* Right conversation */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6' }}>
-                    {selectedHeader ? (
-                        <>
-                            <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
-                                {/* Mobile-only back button to list (go to chat list) */}
-                                <button onClick={() => { setSelectedChatId(null); setSelectedTeamId(null); navigate('/chat', { replace: true }); }} style={{ display: isMobile ? 'inline-flex' : 'none', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
-                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {selectedHeader.photo ? (
-                                        <img src={selectedHeader.photo as any} alt={selectedHeader.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* Right conversation - hidden entirely on mobile unless a conversation is active */}
+                {(!isMobile || hasActiveConversation) && (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#f5f6f6' }}>
+                        {selectedHeader ? (
+                            <>
+                                <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', borderBottom: '1px solid #eee' }}>
+                                    {/* Mobile-only back button to list (go to chat list) */}
+                                    <button onClick={() => { setSelectedChatId(null); setSelectedTeamId(null); navigate('/chat', { replace: true }); }} style={{ display: isMobile ? 'inline-flex' : 'none', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, width: 28, height: 28, lineHeight: '26px', textAlign: 'center', cursor: 'pointer' }}>{'←'}</button>
+                                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {selectedHeader.photo ? (
+                                            <img src={selectedHeader.photo as any} alt={selectedHeader.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <span style={{ fontWeight: 700 }}>
+                                                {selectedHeader.title?.[0]?.toUpperCase() || '?'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedHeader.title}</div>
+                                </div>
+
+                                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f5f6f6' }}>
+                                    {isLoadingConversation ? (
+                                        <div>Loading conversation…</div>
+                                    ) : conversation.length === 0 ? (
+                                        <div style={{ color: '#6b7280', fontSize: 15 }}>No messages yet</div>
                                     ) : (
-                                        <span style={{ fontWeight: 700 }}>
-                                            {selectedHeader.title?.[0]?.toUpperCase() || '?'}
-                                        </span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            {conversation.map((m: any) => {
+                                                const isMine = typeof m.sender === 'string' ? m.sender === currentUserId : m.sender?.user_id === currentUserId;
+                                                return (
+                                                    <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                                                        <div style={{
+                                                            maxWidth: '72%', padding: '10px 14px', borderRadius: 14,
+                                                            background: isMine ? '#dcf8c6' : '#fff',
+                                                            border: '1px solid #e5e7eb',
+                                                            whiteSpace: 'pre-wrap',
+                                                            wordBreak: 'break-word', fontSize: 15,
+                                                        }}>
+                                                            {m.content}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     )}
                                 </div>
-                                <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedHeader.title}</div>
-                            </div>
 
-                            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f5f6f6' }}>
-                                {isLoadingConversation ? (
-                                    <div>Loading conversation…</div>
-                                ) : conversation.length === 0 ? (
-                                    <div style={{ color: '#6b7280', fontSize: 15 }}>No messages yet</div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {conversation.map((m: any) => {
-                                            const isMine = typeof m.sender === 'string' ? m.sender === currentUserId : m.sender?.user_id === currentUserId;
-                                            return (
-                                                <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                                                    <div style={{
-                                                        maxWidth: '72%', padding: '10px 14px', borderRadius: 14,
-                                                        background: isMine ? '#dcf8c6' : '#fff',
-                                                        border: '1px solid #e5e7eb',
-                                                        whiteSpace: 'pre-wrap',
-                                                        wordBreak: 'break-word', fontSize: 15,
-                                                    }}>
-                                                        {m.content}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                <div style={{ padding: 12, borderTop: '1px solid #eee', display: 'flex', gap: 10, background: '#f5f6f6' }}>
+                                    <input
+                                        value={messageInput}
+                                        onChange={(e) => setMessageInput(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+                                        placeholder={'Type a message'}
+                                        style={{ flex: 1, border: '1px solid #ddd', borderRadius: 22, padding: '12px 16px', fontSize: 15 }}
+                                    />
+                                    <button onClick={handleSend} disabled={!messageInput.trim()} style={{ padding: '12px 18px', borderRadius: 22, border: '1px solid #111827', background: '#111827', color: '#fff', fontWeight: 600 }}>
+                                        Send
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            isMobile ? (
+                                <div style={{ flex: 1, background: '#f5f6f6' }} />
+                            ) : (
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f6f6' }}>
+                                    <div style={{ textAlign: 'center', color: '#4b5563', padding: 24 }}>
+                                        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Start a conversation</div>
+                                        <div style={{ fontSize: 14 }}>Select a chat from the left or tap the + to start a new one.</div>
                                     </div>
-                                )}
-                            </div>
-
-                            <div style={{ padding: 12, borderTop: '1px solid #eee', display: 'flex', gap: 10, background: '#f5f6f6' }}>
-                                <input
-                                    value={messageInput}
-                                    onChange={(e) => setMessageInput(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-                                    placeholder={'Type a message'}
-                                    style={{ flex: 1, border: '1px solid #ddd', borderRadius: 22, padding: '12px 16px', fontSize: 15 }}
-                                />
-                                <button onClick={handleSend} disabled={!messageInput.trim()} style={{ padding: '12px 18px', borderRadius: 22, border: '1px solid #111827', background: '#111827', color: '#fff', fontWeight: 600 }}>
-                                    Send
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f6f6' }}>
-                            <div style={{ textAlign: 'center', color: '#4b5563', padding: 24 }}>
-                                <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Start a conversation</div>
-                                <div style={{ fontSize: 14 }}>Select a chat from the left or tap the + to start a new one.</div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                                </div>
+                            )
+                        )}
+                    </div>
+                )}
             </div>
             {/* Create Team Modal */}
             {isCreateTeamOpen && (
