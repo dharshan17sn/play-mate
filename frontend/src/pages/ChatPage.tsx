@@ -81,6 +81,11 @@ export default function ChatPage() {
     const [teamInfoTab, setTeamInfoTab] = useState<'overview' | 'members'>('overview');
     const [teamDetails, setTeamDetails] = useState<any | null>(null);
     const [isLoadingTeamDetails, setIsLoadingTeamDetails] = useState(false);
+    const [isEditingTeamTitle, setIsEditingTeamTitle] = useState(false);
+    const [isEditingTeamDescription, setIsEditingTeamDescription] = useState(false);
+    const [editTeamTitle, setEditTeamTitle] = useState('');
+    const [editTeamDescription, setEditTeamDescription] = useState('');
+    const [memberSearch, setMemberSearch] = useState('');
 
     // Search state
     const [messageSearch, setMessageSearch] = useState('');
@@ -744,10 +749,13 @@ export default function ChatPage() {
                                         onClick={async () => {
                                             if (!selectedTeamId) return;
                                             setIsTeamInfoOpen(true);
+                                            setTeamInfoTab('overview');
                                             setIsLoadingTeamDetails(true);
                                             try {
                                                 const res = await apiService.getTeamById(selectedTeamId);
                                                 setTeamDetails((res as any).data || res);
+                                                setIsEditingTeamTitle(false);
+                                                setIsEditingTeamDescription(false);
                                             } catch (e: any) {
                                                 setError(e?.message || 'Failed to load team');
                                                 setTeamDetails(null);
@@ -844,9 +852,21 @@ export default function ChatPage() {
                                 <div style={{ color: '#374151' }}>Created: {teamDetails.createdAt ? new Date(teamDetails.createdAt).toLocaleString() : '—'}</div>
                                 <div style={{ color: '#374151' }}>{teamDetails.description || 'Add description'}</div>
                                 <div style={{ marginTop: 8, fontWeight: 700 }}>Members</div>
+                                <div>
+                                    <input
+                                        value={memberSearch}
+                                        onChange={(e) => setMemberSearch(e.target.value)}
+                                        placeholder="Search members"
+                                        style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                    />
+                                </div>
                                 {Array.isArray(teamDetails.members) && teamDetails.members.length > 0 ? (
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                        {teamDetails.members.map((m: any) => (
+                                        {teamDetails.members.filter((m: any) => {
+                                            const q = memberSearch.trim().toLowerCase();
+                                            if (!q) return true;
+                                            return (m.displayName || '').toLowerCase().includes(q);
+                                        }).map((m: any) => (
                                             <li key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                                                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     {m.photo ? (
@@ -862,9 +882,7 @@ export default function ChatPage() {
                                                             <span style={{ background: '#e0e7ff', color: '#1d4ed8', fontSize: 12, borderRadius: 9999, padding: '2px 8px', fontWeight: 700 }}>Admin</span>
                                                         ) : null}
                                                     </div>
-                                                    {m.status && (
-                                                        <div style={{ color: '#6b7280', fontSize: 12 }}>{m.status}</div>
-                                                    )}
+                                                    {/* status removed per request */}
                                                 </div>
                                             </li>
                                         ))}
@@ -901,16 +919,109 @@ export default function ChatPage() {
                                                     <span style={{ fontWeight: 700 }}>{(teamDetails.title || '?')[0]}</span>
                                                 )}
                                             </div>
-                                            <div style={{ fontWeight: 800, fontSize: 20 }}>{teamDetails.title}</div>
+                                            {(() => {
+                                                const isAdmin = teamDetails?.creatorId === currentUserId || (Array.isArray(teamDetails?.members) && teamDetails.members.some((m: any) => (m.userId === currentUserId || m.user?.user_id === currentUserId) && m.isAdmin));
+                                                return (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        {isEditingTeamTitle ? (
+                                                            <input
+                                                                value={editTeamTitle}
+                                                                onChange={(e) => setEditTeamTitle(e.target.value)}
+                                                                onKeyDown={async (e) => {
+                                                                    if (e.key === 'Enter' && selectedTeamId) {
+                                                                        const newTitle = editTeamTitle.trim();
+                                                                        try {
+                                                                            await apiService.updateTeam(selectedTeamId, { title: newTitle });
+                                                                            setTeamDetails((prev: any) => ({ ...prev, title: newTitle }));
+                                                                            setTeams(prev => prev.map(t => t.id === selectedTeamId ? { ...t, title: newTitle } : t));
+                                                                            setIsEditingTeamTitle(false);
+                                                                        } catch (err: any) {
+                                                                            setError(err?.message || 'Failed to update title');
+                                                                        }
+                                                                    } else if (e.key === 'Escape') {
+                                                                        setIsEditingTeamTitle(false);
+                                                                    }
+                                                                }}
+                                                                autoFocus
+                                                                style={{ fontWeight: 800, fontSize: 20, border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 8px' }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ fontWeight: 800, fontSize: 20 }}>{teamDetails.title}</div>
+                                                        )}
+                                                        {isAdmin && !isEditingTeamTitle && (
+                                                            <button
+                                                                title="Edit title"
+                                                                onClick={() => { setEditTeamTitle(teamDetails.title || ''); setIsEditingTeamTitle(true); }}
+                                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                                            >
+                                                                ✎
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                             <div style={{ color: '#374151' }}>Game: {teamDetails.gameName || teamDetails.game?.name || '—'}</div>
                                             <div style={{ color: '#374151' }}>Created: {teamDetails.createdAt ? new Date(teamDetails.createdAt).toLocaleString() : '—'}</div>
-                                            <div style={{ color: '#374151' }}>Description: {teamDetails.description || 'Add description'}</div>
+                                            {(() => {
+                                                const isAdmin = teamDetails?.creatorId === currentUserId || (Array.isArray(teamDetails?.members) && teamDetails.members.some((m: any) => (m.userId === currentUserId || m.user?.user_id === currentUserId) && m.isAdmin));
+                                                return (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        {isEditingTeamDescription ? (
+                                                            <input
+                                                                value={editTeamDescription}
+                                                                onChange={(e) => setEditTeamDescription(e.target.value)}
+                                                                onKeyDown={async (e) => {
+                                                                    if (e.key === 'Enter' && selectedTeamId) {
+                                                                        const newDesc = editTeamDescription.trim();
+                                                                        try {
+                                                                            await apiService.updateTeam(selectedTeamId, { description: newDesc });
+                                                                            setTeamDetails((prev: any) => ({ ...prev, description: newDesc }));
+                                                                            setTeams(prev => prev.map(t => t.id === selectedTeamId ? { ...t, description: newDesc } : t));
+                                                                            setIsEditingTeamDescription(false);
+                                                                        } catch (err: any) {
+                                                                            setError(err?.message || 'Failed to update description');
+                                                                        }
+                                                                    } else if (e.key === 'Escape') {
+                                                                        setIsEditingTeamDescription(false);
+                                                                    }
+                                                                }}
+                                                                autoFocus
+                                                                placeholder="Add description"
+                                                                style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 8px', width: '100%' }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ color: '#374151' }}>Description: {teamDetails.description || 'Add description'}</div>
+                                                        )}
+                                                        {isAdmin && !isEditingTeamDescription && (
+                                                            <button
+                                                                title="Edit description"
+                                                                onClick={() => { setEditTeamDescription(teamDetails.description || ''); setIsEditingTeamDescription(true); }}
+                                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                                            >
+                                                                ✎
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     ) : (
                                         <div style={{ padding: 16 }}>
+                                            <div style={{ marginBottom: 10 }}>
+                                                <input
+                                                    value={memberSearch}
+                                                    onChange={(e) => setMemberSearch(e.target.value)}
+                                                    placeholder="Search members"
+                                                    style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}
+                                                />
+                                            </div>
                                             {Array.isArray(teamDetails.members) && teamDetails.members.length > 0 ? (
                                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                                    {teamDetails.members.map((m: any) => (
+                                                    {teamDetails.members.filter((m: any) => {
+                                                        const q = memberSearch.trim().toLowerCase();
+                                                        if (!q) return true;
+                                                        return (m.displayName || '').toLowerCase().includes(q);
+                                                    }).map((m: any) => (
                                                         <li key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
                                                             <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e5e7eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                 {m.photo ? (
@@ -926,9 +1037,7 @@ export default function ChatPage() {
                                                                         <span style={{ background: '#e0e7ff', color: '#1d4ed8', fontSize: 12, borderRadius: 9999, padding: '2px 8px', fontWeight: 700 }}>Admin</span>
                                                                     ) : null}
                                                                 </div>
-                                                                {m.status && (
-                                                                    <div style={{ color: '#6b7280', fontSize: 12 }}>{m.status}</div>
-                                                                )}
+                                                                {/* status removed per request */}
                                                             </div>
                                                         </li>
                                                     ))}
