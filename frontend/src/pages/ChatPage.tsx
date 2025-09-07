@@ -55,6 +55,8 @@ export default function ChatPage() {
         isPublic: true,
     });
     const [createTeamPhotoPreview, setCreateTeamPhotoPreview] = useState<string | null>(null);
+    const [availableGames, setAvailableGames] = useState<{ id?: string; name: string }[]>([]);
+    const [isLoadingGames, setIsLoadingGames] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -117,6 +119,25 @@ export default function ChatPage() {
             cancelled = true;
         };
     }, [selectedChatId, selectedTeamId]);
+
+    // Load games when create team modal opens
+    useEffect(() => {
+        let cancelled = false;
+        async function loadGames() {
+            if (!isCreateTeamOpen) return;
+            setIsLoadingGames(true);
+            try {
+                const games = await apiService.getGames();
+                if (!cancelled) setAvailableGames(games || []);
+            } catch (e) {
+                if (!cancelled) setAvailableGames([]);
+            } finally {
+                if (!cancelled) setIsLoadingGames(false);
+            }
+        }
+        loadGames();
+        return () => { cancelled = true; };
+    }, [isCreateTeamOpen]);
 
     // Socket listeners
     useEffect(() => {
@@ -488,13 +509,17 @@ export default function ChatPage() {
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: 14, color: '#374151' }}>Game Name<span style={{ color: '#b91c1c' }}> *</span></label>
-                                <input
+                                <label style={{ fontSize: 14, color: '#374151' }}>Game<span style={{ color: '#b91c1c' }}> *</span></label>
+                                <select
                                     value={createTeamForm.gameName}
                                     onChange={(e) => setCreateTeamForm(prev => ({ ...prev, gameName: e.target.value }))}
-                                    placeholder="e.g., Valorant"
-                                    style={{ border: '1px solid #ddd', borderRadius: 6, padding: '10px 12px' }}
-                                />
+                                    style={{ border: '1px solid #ddd', borderRadius: 6, padding: '10px 12px', background: '#fff' }}
+                                >
+                                    <option value="" disabled>{isLoadingGames ? 'Loading games…' : 'Select a game'}</option>
+                                    {availableGames.map(g => (
+                                        <option key={g.id || g.name} value={g.name}>{g.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: 14, color: '#374151' }}>Description</label>

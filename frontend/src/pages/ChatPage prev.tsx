@@ -2030,5 +2030,5 @@ const ChatPage: React.FC = () => {
             </div>
         );
     };
-
-    export default ChatPage;
+};
+export default ChatPage;
