@@ -12,6 +12,7 @@ type ChatListItem = {
     userA: { user_id: string; displayName: string; photo?: string | null };
     userB: { user_id: string; displayName: string; photo?: string | null };
     lastMessage?: { id: string; content: string; sentAt: string | Date; senderId: string };
+    unreadCount?: number;
 };
 
 type DirectMessage = {
@@ -317,6 +318,7 @@ export default function ChatPage() {
                 photo: other.photo || undefined,
                 lastMessage: c.lastMessage?.content || '',
                 lastAt: c.lastMessage?.sentAt || c.updatedAt,
+                unreadCount: (c as any).unreadCount || 0,
             };
         });
     }, [chats, currentUserId]);
@@ -565,7 +567,14 @@ export default function ChatPage() {
                                                         background: selectedChatId === item.id ? '#f9fafb' : 'transparent',
                                                         cursor: 'pointer',
                                                     }}
-                                                    onClick={() => { setSelectedChatId(item.id); setSelectedTeamId(null); }}
+                                                    onClick={async () => {
+                                                        setSelectedChatId(item.id);
+                                                        setSelectedTeamId(null);
+                                                        try {
+                                                            await apiService.markMessagesAsRead(item.id);
+                                                            setChats(prev => prev.map(c => c.id === item.id ? { ...c, unreadCount: 0 } : c));
+                                                        } catch { }
+                                                    }}
                                                 >
                                                     <div
                                                         style={{
@@ -580,7 +589,14 @@ export default function ChatPage() {
                                                         )}
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                            <div style={{ fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                                            {item.unreadCount && item.unreadCount >= 1 ? (
+                                                                <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, borderRadius: 9999, padding: '2px 8px', minWidth: 20, textAlign: 'center', fontWeight: 700 }}>
+                                                                    {item.unreadCount}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
                                                         <div style={{ color: '#6b7280', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.lastMessage}</div>
                                                     </div>
                                                 </li>
@@ -637,7 +653,14 @@ export default function ChatPage() {
                                                     }}
                                                     onClick={() => { setSelectedTeamId(team.id); setSelectedChatId(null); }}
                                                 >
-                                                    <div style={{ fontWeight: 600 }}>{team.title}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                        <div style={{ fontWeight: 600 }}>{team.title}</div>
+                                                        {(team as any).unreadCount && (team as any).unreadCount >= 1 ? (
+                                                            <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, borderRadius: 9999, padding: '2px 8px', minWidth: 20, textAlign: 'center', fontWeight: 700 }}>
+                                                                {(team as any).unreadCount}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                     {team.gameName && (
                                                         <div style={{ color: '#6b7280', fontSize: 14 }}>{team.gameName}</div>
                                                     )}
