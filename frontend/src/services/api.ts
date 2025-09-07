@@ -76,6 +76,7 @@ export interface TeamSummary {
   description?: string;
   gameName?: string;
   isPublic?: boolean;
+  game?: { name: string };
   members?: TeamMember[];
 }
 
@@ -297,13 +298,13 @@ class ApiService {
   // Teams endpoints
   async getMyTeams(): Promise<TeamSummary[]> {
     try {
-      // Backend exposes user's teams under /users/teams per routes
-      const response = await this.requestWithAuth<ApiResponse>('/users/teams');
-      // API usually returns { success, data, ... }
-      if (response && Array.isArray(response.data)) {
-        return response.data as TeamSummary[];
+      // Use Teams controller endpoint that returns full team details
+      const response = await this.requestWithAuth<ApiResponse>('/teams/my');
+      // API returns { success, data } where data is either array or { teams }
+      if (response && Array.isArray((response as any).data)) {
+        return (response as any).data as TeamSummary[];
       }
-      if (response && response.data && Array.isArray((response as any).data?.teams)) {
+      if (response && (response as any).data && Array.isArray((response as any).data.teams)) {
         return (response as any).data.teams as TeamSummary[];
       }
       return [];

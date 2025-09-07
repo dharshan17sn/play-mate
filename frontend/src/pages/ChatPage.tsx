@@ -674,16 +674,23 @@ export default function ChatPage() {
                                                     onClick={() => { setSelectedTeamId(team.id); setSelectedChatId(null); }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                                        <div style={{ fontWeight: 600 }}>{team.title}</div>
+                                                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span>{team.title}</span>
+                                                            {(((team as any).isPublic === false) || ((team as any).privacy === 'PRIVATE')) ? (
+                                                                <span title="Private team" aria-label="Private team">🔒</span>
+                                                            ) : null}
+                                                        </div>
                                                         {(team as any).unreadCount && (team as any).unreadCount >= 1 ? (
                                                             <span style={{ background: '#ef4444', color: '#fff', fontSize: 12, borderRadius: 9999, padding: '2px 8px', minWidth: 20, textAlign: 'center', fontWeight: 700 }}>
                                                                 {(team as any).unreadCount}
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                    {team.gameName && (
-                                                        <div style={{ color: '#6b7280', fontSize: 14 }}>{team.gameName}</div>
-                                                    )}
+                                                    {((team as any).gameName || (team as any).game?.name) ? (
+                                                        <div style={{ color: '#6b7280', fontSize: 14 }}>
+                                                            Game: {((team as any).gameName || (team as any).game?.name)}
+                                                        </div>
+                                                    ) : null}
                                                 </li>
                                             ))}
                                         </ul>
