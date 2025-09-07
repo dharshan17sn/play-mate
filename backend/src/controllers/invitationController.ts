@@ -198,4 +198,52 @@ export class InvitationController {
       ResponseBuilder.success(admins, 'Team admins retrieved successfully')
     );
   });
+
+  /**
+   * Approve team join request
+   */
+  static approveTeamJoinRequest = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    const { invitationId } = req.params;
+    if (!invitationId) {
+      return res.status(400).json(
+        ResponseBuilder.validationError('Invitation ID is required')
+      );
+    }
+
+    await InvitationService.approveTeamJoinRequest(invitationId, req.user.user_id);
+
+    res.status(200).json(
+      ResponseBuilder.success({}, 'Team join request approved successfully')
+    );
+  });
+
+  /**
+   * Reject team join request
+   */
+  static rejectTeamJoinRequest = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    const { invitationId } = req.params;
+    if (!invitationId) {
+      return res.status(400).json(
+        ResponseBuilder.validationError('Invitation ID is required')
+      );
+    }
+
+    await InvitationService.rejectTeamJoinRequest(invitationId, req.user.user_id);
+
+    res.status(200).json(
+      ResponseBuilder.success({}, 'Team join request rejected successfully')
+    );
+  });
 }

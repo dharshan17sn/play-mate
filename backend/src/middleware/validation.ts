@@ -4,13 +4,18 @@ import { ValidationError } from '../utils/errors';
 
 export const validateRequest = <T extends z.ZodTypeAny>(schema: T) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    
+
     try {
+      console.log('Validation - Request body:', req.body);
+      console.log('Validation - Schema:', schema.description || 'No description');
+
       const validatedData = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params,
       });
+
+      console.log('Validation - Success:', validatedData);
 
       req.body = validatedData.body || req.body;
       req.query = validatedData.query || req.query;
@@ -19,13 +24,15 @@ export const validateRequest = <T extends z.ZodTypeAny>(schema: T) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        console.error('Validation - ZodError:', error.errors);
         const validationErrors = error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
         }));
-        
+
         next(new ValidationError(`Validation failed: ${validationErrors.map(e => e.message).join(', ')}`));
       } else {
+        console.error('Validation - Other error:', error);
         next(error);
       }
     }
@@ -65,18 +72,18 @@ export const userSearchSchema = z.object({
 });
 
 // User validation schemas
-export const userRegistrationSchema = z.object({
-  body: z.object({
-    user_id: z.string().min(8).max(20),
-    displayName: z.string().min(2).max(30),
-    email: z.string().email(),
-    password: z.string().min(8).max(100),
-    gender: z.string().optional(),
-    location: z.string().optional(),
-    preferredDays: z.array(z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])).optional(),
-    timeRange: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time range must be in format HH:MM-HH:MM').optional(),
-  }),
-});
+// export const userRegistrationSchema = z.object({
+//   body: z.object({
+//     user_id: z.string().min(8).max(20),
+//     displayName: z.string().min(2).max(30),
+//     email: z.string().email(),
+//     password: z.string().min(8).max(100),
+//     gender: z.string().optional(),
+//     location: z.string().optional(),
+//     preferredDays: z.array(z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])).optional(),
+//     timeRange: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time range must be in format HH:MM-HH:MM').optional(),
+//   }),
+// });
 
 export const userLoginSchema = z.object({
   body: z.object({
@@ -92,7 +99,7 @@ export const userUpdateSchema = z.object({
     gender: z.string().optional(),
     location: z.string().optional(),
     preferredDays: z.array(z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])).optional(),
-    timeRange: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'timeRange must be in format HH:MM-HH:MM').optional(),
+    timeRange: z.array(z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Time range must be in format HH:MM-HH:MM (e.g., 18:00-22:00)')).optional(),
     preferredGames: z.array(z.string().min(2).max(50)).optional(),
   }),
 });
@@ -103,7 +110,7 @@ export const requestOtpSchema = z.object({
   }),
 });
 
-export const  verifyOtpSchema = z.object({
+export const verifyOtpSchema = z.object({
   body: z.object({
     email: z.string().email(),
     code: z.string().min(4).max(8),
@@ -136,6 +143,8 @@ export const teamCreateSchema = z.object({
     description: z.string().max(500).optional(),
     photo: z.string().optional(),
     gameName: z.string().min(2).max(50),
+    noOfPlayers: z.number().min(2).max(50).optional(),
+    isPublic: z.boolean().optional().default(true),
   }),
 });
 
@@ -144,6 +153,8 @@ export const teamUpdateSchema = z.object({
     title: z.string().min(2).max(100).optional(),
     description: z.string().max(500).optional(),
     photo: z.string().optional(),
+    noOfPlayers: z.number().min(2).max(50).optional(),
+    isPublic: z.boolean().optional(),
   }),
 });
 
@@ -151,6 +162,13 @@ export const teamUpdateSchema = z.object({
 export const teamIdParamSchema = z.object({
   params: z.object({
     teamId: z.string().uuid(),
+  }),
+});
+
+export const teamMemberParamSchema = z.object({
+  params: z.object({
+    teamId: z.string().uuid(),
+    memberId: z.string().min(1), // Accept any non-empty string for memberId (user_id)
   }),
 });
 
@@ -225,5 +243,12 @@ export const messageCreateSchema = z.object({
 export const gameCreateSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(50),
+  }),
+});
+
+export const gameDeleteSchema = z.object({
+  body: z.object({
+    name: z.string().min(2).max(50),
+    force: z.boolean().optional().default(false),
   }),
 });

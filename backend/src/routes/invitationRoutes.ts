@@ -192,4 +192,8 @@ router.post('/teams/:teamId/admins', validateRequest(teamAdminAddSchema), Invita
  */
 router.delete('/teams/:teamId/admins/:userId', validateRequest(teamAdminRemoveSchema), InvitationController.removeTeamAdmin);
 
+// Team join request approval/rejection
+router.put('/:invitationId/approve', validateRequest(invitationIdParamSchema), InvitationController.approveTeamJoinRequest);
+router.put('/:invitationId/reject', validateRequest(invitationIdParamSchema), InvitationController.rejectTeamJoinRequest);
+
 export default router;

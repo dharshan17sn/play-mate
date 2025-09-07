@@ -40,21 +40,21 @@ const hasSmtpConfig = Boolean(
 const transporter = hasSmtpConfig
   ? isGmailProvider
     ? nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS, // Use Gmail App Password
-        },
-      })
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS, // Use Gmail App Password
+      },
+    })
     : nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      })
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
   : null;
 
 export class OtpService {
@@ -114,5 +114,4 @@ export class OtpService {
     otpStore.delete(email);
   }
 }
-
 

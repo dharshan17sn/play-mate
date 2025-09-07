@@ -2,12 +2,16 @@ import app from './app';
 import { config } from './config';
 import { database } from './config/database';
 import { logger } from './utils/logger';
+import { RealtimeService } from './services/realtime';
+import type { Server as HttpServer } from 'http';
 
-const server = app.listen(config.port, async () => {
+const server: HttpServer = app.listen(config.port, async () => {
   try {
     // Connect to database
     await database.connect();
-    
+    // Initialize realtime layer
+    RealtimeService.initialize(server);
+
     logger.info(`🚀 Server running on port ${config.port}`);
     logger.info(`📊 Environment: ${config.nodeEnv}`);
     logger.info(`🔗 Health check: http://localhost:${config.port}/health`);
@@ -21,14 +25,14 @@ const server = app.listen(config.port, async () => {
 // Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
   logger.info(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
-  
+
   server.close(async () => {
     logger.info('📡 HTTP server closed');
-    
+
     try {
       await database.disconnect();
       logger.info('🗄️ Database disconnected');
-      
+
       logger.info('✅ Graceful shutdown completed');
       process.exit(0);
     } catch (error) {

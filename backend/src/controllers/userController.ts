@@ -32,16 +32,25 @@ export class UserController {
    * Verify OTP and register the user
    */
   static verifyRegistrationOtp = asyncErrorHandler(async (req: Request, res: Response) => {
-    const { email, code, user_id, displayName, password, gender, location, preferredDays, timeRange } = req.body as any;
+    console.log('verifyRegistrationOtp - Request body:', req.body);
+    const { email, code, user_id, displayName, password, gender, location } = req.body as any;
+
+    console.log('verifyRegistrationOtp - Extracted fields:', {
+      email, code, user_id, displayName,
+      password: password ? '***' : 'missing',
+      gender, location
+    });
 
     const valid = OtpService.verifyOtp(email, code);
+    console.log('verifyRegistrationOtp - OTP validation result:', valid);
+
     if (!valid) {
       return res.status(400).json(
         ResponseBuilder.validationError('Invalid or expired OTP')
       );
     }
 
-    await UserService.createUser({ user_id, displayName, email, password, gender, location, preferredDays, timeRange });
+    await UserService.createUser({ user_id, displayName, email, password, gender, location });
 
     // Invalidate OTP after successful use
     OtpService.invalidateOtp(email);
@@ -58,9 +67,9 @@ export class UserController {
    */
   static login = asyncErrorHandler(async (req: Request, res: Response) => {
     const { identifier, password } = req.body as { identifier: string; password: string };
-    
+
     const result = await UserService.authenticateUser(identifier, password);
-    
+
     res.status(200).json(
       ResponseBuilder.success(result, 'Login successful')
     );
@@ -120,7 +129,7 @@ export class UserController {
     }
 
     const user = await UserService.getUserById(req.user.user_id);
-    
+
     res.status(200).json(
       ResponseBuilder.success(user, 'Profile retrieved successfully')
     );
@@ -131,30 +140,44 @@ export class UserController {
    */
   static getUserById = asyncErrorHandler(async (req: Request, res: Response) => {
     const user_id = req.params.user_id as string;
-    
+
     const user = await UserService.getUserById(user_id);
-    
+
     res.status(200).json(
       ResponseBuilder.success(user, 'User profile retrieved successfully')
     );
   });
 
   /**
-   * Update user profile
+   * Update current user profile
    */
   static updateProfile = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    console.log('=== USER CONTROLLER UPDATE PROFILE START ===');
+    console.log('updateProfile - Request body:', req.body);
+    console.log('updateProfile - Request body type:', typeof req.body);
+    console.log('updateProfile - Request body keys:', Object.keys(req.body));
+    console.log('updateProfile - User ID from token:', req.user?.user_id);
+
     if (!req.user) {
+      console.error('updateProfile - No user found in request');
       return res.status(401).json(
         ResponseBuilder.unauthorized('User not authenticated')
       );
     }
 
-    const updateData = req.body;
-    const user = await UserService.updateUser(req.user.user_id, updateData);
-    
-    res.status(200).json(
-      ResponseBuilder.updated(user, 'Profile updated successfully')
-    );
+    try {
+      const updatedUser = await UserService.updateUser(req.user.user_id, req.body);
+      console.log('updateProfile - User updated successfully:', updatedUser);
+
+      res.status(200).json(
+        ResponseBuilder.updated(updatedUser, 'Profile updated successfully')
+      );
+      console.log('=== USER CONTROLLER UPDATE PROFILE END ===');
+    } catch (error) {
+      console.error('updateProfile - Error updating user:', error);
+      console.log('=== USER CONTROLLER UPDATE PROFILE END ===');
+      throw error;
+    }
   });
 
   /**
@@ -162,9 +185,9 @@ export class UserController {
    */
   static getUserWithTeams = asyncErrorHandler(async (req: Request, res: Response) => {
     const user_id = req.params.user_id as string;
-    
+
     const user = await UserService.getUserWithTeams(user_id);
-    
+
     res.status(200).json(
       ResponseBuilder.success(user, 'User with teams retrieved successfully')
     );
@@ -177,9 +200,9 @@ export class UserController {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
-    
+
     const result = await UserService.getUsers(page, limit, search);
-    
+
     res.status(200).json(
       ResponseBuilder.paginated(
         result.users,
@@ -200,9 +223,9 @@ export class UserController {
     const search = req.query.search as string;
     const user_id = req.query.user_id as string;
     const displayName = req.query.displayName as string;
-    
+
     const result = await UserService.getUsers(page, limit, search, user_id, displayName);
-    
+
     res.status(200).json(
       ResponseBuilder.success(result, 'Users search completed successfully')
     );
@@ -227,7 +250,7 @@ export class UserController {
     }
 
     await UserService.deleteUser(user_id);
-    
+
     res.status(200).json(
       ResponseBuilder.deleted('Account deleted successfully')
     );
@@ -244,9 +267,9 @@ export class UserController {
     }
 
     const { currentPassword, newPassword } = req.body;
-    
+
     await UserService.changePassword(req.user.user_id, currentPassword, newPassword);
-    
+
     res.status(200).json(
       ResponseBuilder.success({}, 'Password changed successfully')
     );
@@ -263,7 +286,7 @@ export class UserController {
     }
 
     const user = await UserService.getUserWithTeams(req.user.user_id);
-    
+
     res.status(200).json(
       ResponseBuilder.success(user.teams, 'Your teams retrieved successfully')
     );

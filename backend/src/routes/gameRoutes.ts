@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { GameController } from '../controllers/gameController';
-import { validateRequest } from '../middleware/validation';
+import { validateRequest, gameDeleteSchema } from '../middleware/validation';
 import {
   gameCreateSchema,
 } from '../middleware/validation';
@@ -45,6 +45,37 @@ router.get('/', GameController.getAllGames);
  *         description: Not found
  */
 router.get('/:name', GameController.getGameById);
+/**
+ * @openapi
+ * /api/v1/games/delete:
+ *   post:
+ *     summary: Delete a game by name (requires no dependencies)
+ *     tags: [Games]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Game name to delete
+ *               force:
+ *                 type: boolean
+ *                 description: Cascade delete related data
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Not found
+ *       409:
+ *         description: Conflict (existing references)
+ */
+router.post('/delete', validateRequest(gameDeleteSchema), GameController.deleteGame);
 
 /**
  * @openapi

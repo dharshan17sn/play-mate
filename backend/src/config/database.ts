@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient, Prisma } from '../../generated/prisma';
 import { logger } from '../utils/logger';
 
 declare global {
@@ -7,10 +7,10 @@ declare global {
 
 class Database {
   private static instance: Database;
-  private _client: PrismaClient;
+  private _client: PrismaClient<Prisma.PrismaClientOptions, 'query' | 'error' | 'warn' | 'info'>;
 
   private constructor() {
-    this._client = new PrismaClient({
+    this._client = new PrismaClient<Prisma.PrismaClientOptions, 'query' | 'error' | 'warn' | 'info'>({
       log: [
         { level: 'query', emit: 'event' },
         { level: 'error', emit: 'event' },
@@ -21,7 +21,7 @@ class Database {
 
     // Log queries in development
     if (process.env.NODE_ENV === 'development') {
-      this._client.$on('query', (e) => {
+      this._client.$on('query', (e: Prisma.QueryEvent) => {
         logger.debug('Query: ' + e.query);
         logger.debug('Params: ' + e.params);
         logger.debug('Duration: ' + e.duration + 'ms');
@@ -29,17 +29,17 @@ class Database {
     }
 
     // Log errors
-    this._client.$on('error', (e) => {
+    this._client.$on('error', (e: Prisma.LogEvent) => {
       logger.error('Prisma Error: ' + e.message);
     });
 
     // Log warnings
-    this._client.$on('warn', (e) => {
+    this._client.$on('warn', (e: Prisma.LogEvent) => {
       logger.warn('Prisma Warning: ' + e.message);
     });
 
     // Log info
-    this._client.$on('info', (e) => {
+    this._client.$on('info', (e: Prisma.LogEvent) => {
       logger.info('Prisma Info: ' + e.message);
     });
   }

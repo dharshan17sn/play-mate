@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { TeamController } from '../controllers/teamController';
+import { TeamMessageController } from '../controllers/teamMessageController';
 import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import {
@@ -8,6 +9,7 @@ import {
   paginationSchema,
   searchSchema,
   teamIdParamSchema,
+  teamMemberParamSchema,
 } from '../middleware/validation';
 
 const router = Router();
@@ -19,7 +21,30 @@ const router = Router();
  *     description: Team management
  */
 
-// All team routes require authentication
+/**
+ * @openapi
+ * /api/v1/teams/public:
+ *   get:
+ *     summary: Get public teams
+ *     tags: [Teams]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100 }
+ *       - in: query
+ *         name: gameName
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: OK }
+ */
+// Public team routes (no authentication required)
+router.get('/public', TeamController.getPublicTeams);
+router.get('/user/:userId', TeamController.getTeamsByUserId);
+
+// All other team routes require authentication
 router.use(authenticateToken);
 
 /**
@@ -127,6 +152,19 @@ router.get('/:teamId', validateRequest(teamIdParamSchema), TeamController.getTea
 router.put('/:teamId', validateRequest(teamIdParamSchema), validateRequest(teamUpdateSchema), TeamController.updateTeam);
 router.delete('/:teamId', validateRequest(teamIdParamSchema), TeamController.deleteTeam);
 
+// Join team and team members endpoints
+router.post('/:teamId/join', validateRequest(teamIdParamSchema), TeamController.requestToJoinTeam);
+router.get('/:teamId/members', validateRequest(teamIdParamSchema), TeamController.getTeamMembers);
+
+// Member management endpoints
+router.put('/:teamId/members/:memberId/admin', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.makeMemberAdmin);
+router.delete('/:teamId/members/:memberId', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.removeMemberFromTeam);
+
+// Team messaging endpoints
+router.post('/:teamId/messages', validateRequest(teamIdParamSchema), TeamMessageController.sendTeamMessage);
+router.get('/:teamId/messages', validateRequest(teamIdParamSchema), TeamMessageController.getTeamMessages);
+router.put('/:teamId/messages/read', validateRequest(teamIdParamSchema), TeamMessageController.markTeamMessagesAsRead);
+
 /**
  * @openapi
  * /api/v1/teams/user/{userId}:
@@ -141,7 +179,5 @@ router.delete('/:teamId', validateRequest(teamIdParamSchema), TeamController.del
  *     responses:
  *       200: { description: OK }
  */
-// Public team routes (no authentication required)
-router.get('/user/:userId', TeamController.getTeamsByUserId);
 
 export default router;

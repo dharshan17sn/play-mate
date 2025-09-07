@@ -67,10 +67,6 @@ router.post('/register/request-otp', validateRequest(requestOtpSchema), UserCont
  *               password: { type: string }
  *               gender: { type: string }
  *               location: { type: string }
- *               preferredDays: 
- *                 type: array
- *                 items: { type: string, enum: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] }
- *               timeRange: { type: string, pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$', example: '18:00-22:00' }
  *     responses:
  *       201: { description: Registered }
  *       400: { description: Invalid or expired OTP }
@@ -249,10 +245,12 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *                   enum: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
  *                 example: ["MONDAY", "WEDNESDAY", "FRIDAY"]
  *               timeRange:
- *                 type: string
- *                 pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$'
- *                 description: Time range when you're available to play (24-hour format)
- *                 example: "18:00-22:00"
+ *                 type: array
+ *                 description: Time ranges when you're available to play (24-hour format)
+ *                 items:
+ *                   type: string
+ *                   pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]-([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+ *                 example: ["18:00-22:00", "06:00-10:00"]
  *               preferredGames:
  *                 type: array
  *                 description: Names of games to add to your preferred games list (must exist in the database, duplicates are automatically skipped)
@@ -267,7 +265,7 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *             gender: "male"
  *             location: "New York"
  *             preferredDays: ["MONDAY", "WEDNESDAY", "FRIDAY"]
- *             timeRange: "18:00-22:00"
+ *             timeRange: ["18:00-22:00", "06:00-10:00"]
  *             preferredGames: ["Valorant", "CS2", "League of Legends"]
  *     responses:
  *       200:
@@ -310,8 +308,10 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *                         type: string
  *                       example: ["MONDAY", "WEDNESDAY", "FRIDAY"]
  *                     timeRange:
- *                       type: string
- *                       example: "18:00-22:00"
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["18:00-22:00", "06:00-10:00"]
  *                     preferredGames:
  *                       type: array
  *                       items:
@@ -338,7 +338,7 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Validation failed: timeRange must be in format HH:MM-HH:MM"
+ *                   example: "Validation failed: Invalid input data"
  *       401:
  *         description: Unauthorized - invalid or missing token
  *       404:

@@ -2,11 +2,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database';
 import { config } from '../config';
-import { 
-  NotFoundError, 
-  ConflictError, 
+import {
+  NotFoundError,
+  ConflictError,
   AuthenticationError,
-  ValidationError 
+  ValidationError
 } from '../utils/errors';
 import { logger } from '../utils/logger';
 
@@ -17,8 +17,6 @@ export interface CreateUserData {
   password: string;
   gender?: string;
   location?: string;
-  preferredDays?: string[];
-  timeRange?: string;
 }
 
 export interface UpdateUserData {
@@ -27,7 +25,7 @@ export interface UpdateUserData {
   gender?: string;
   location?: string;
   preferredDays?: string[];
-  timeRange?: string;
+  timeRange?: string[];
   preferredGames?: string[];
 }
 
@@ -38,8 +36,6 @@ export interface UserWithTeams {
   photo?: string | null;
   gender?: string | null;
   location?: string | null;
-  preferredDays?: string[] | null;
-  timeRange?: string | null;
   teams: Array<{
     id: string;
     title: string;
@@ -86,8 +82,6 @@ export class UserService {
           email: data.email,
           gender: data.gender,
           location: data.location,
-          preferredDays: data.preferredDays as any,
-          timeRange: data.timeRange,
           passwordHash: hashedPassword,
         },
         select: {
@@ -97,8 +91,6 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
-          preferredDays: true,
-          timeRange: true,
         },
       });
 
@@ -188,7 +180,7 @@ export class UserService {
               },
             },
           },
-        },
+        } as any,
       });
 
       if (!user) {
@@ -207,15 +199,31 @@ export class UserService {
    */
   static async updateUser(user_id: string, data: UpdateUserData) {
     try {
+      console.log('UserService.updateUser - Received data:', data);
       const { preferredGames, ...userData } = data;
+
+      // Create a clean update object with only valid fields
+      const updateData: any = {};
+
+      if (userData.displayName !== undefined) updateData.displayName = userData.displayName;
+      if (userData.photo !== undefined) updateData.photo = userData.photo;
+      if (userData.gender !== undefined) updateData.gender = userData.gender;
+      if (userData.location !== undefined) updateData.location = userData.location;
+      if (userData.preferredDays !== undefined) {
+        console.log('UserService.updateUser - preferredDays:', userData.preferredDays);
+        updateData.preferredDays = userData.preferredDays;
+      }
+      if (userData.timeRange !== undefined) {
+        console.log('UserService.updateUser - timeRange:', userData.timeRange);
+        updateData.timeRange = userData.timeRange;
+      }
+
+      console.log('UserService.updateUser - Final updateData:', updateData);
 
       // Update user data
       const user = await prisma.user.update({
         where: { user_id },
-        data: {
-          ...userData,
-          preferredDays: userData.preferredDays as any, // Cast to Prisma enum type
-        },
+        data: updateData,
         select: {
           user_id: true,
           displayName: true,
@@ -223,29 +231,26 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
-          preferredDays: true,
-          timeRange: true,
         },
       });
 
       // Handle preferred games if provided
       if (preferredGames !== undefined) {
-        // Check if all games exist first
+        // Check if all games exist first, create them if they don't
         if (preferredGames.length > 0) {
-          const existingGames = await prisma.game.findMany({
-            where: {
-              name: {
-                in: preferredGames,
-              },
-            },
-            select: { name: true },
-          });
+          for (const gameName of preferredGames) {
+            // Check if game exists
+            const existingGame = await prisma.game.findUnique({
+              where: { name: gameName }
+            });
 
-          const existingGameNames = existingGames.map(game => game.name);
-          const nonExistentGames = preferredGames.filter(gameName => !existingGameNames.includes(gameName));
-
-          if (nonExistentGames.length > 0) {
-            throw new NotFoundError(`Games not found: ${nonExistentGames.join(', ')}`);
+            // Create game if it doesn't exist
+            if (!existingGame) {
+              await prisma.game.create({
+                data: { name: gameName }
+              });
+              logger.info(`Created new game: ${gameName}`);
+            }
           }
         }
 
@@ -271,8 +276,6 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
-          preferredDays: true,
-          timeRange: true,
           preferredGames: {
             select: {
               gameName: true,
@@ -308,8 +311,6 @@ export class UserService {
           photo: true,
           gender: true,
           location: true,
-          preferredDays: true,
-          timeRange: true,
           teams: {
             select: {
               id: true,
@@ -338,8 +339,6 @@ export class UserService {
         photo: user.photo,
         gender: user.gender,
         location: user.location,
-        preferredDays: user.preferredDays,
-        timeRange: user.timeRange,
         teams: user.teams.map((tm: any) => ({
           id: tm.team.id,
           title: tm.team.title,
@@ -361,20 +360,20 @@ export class UserService {
   static async getUsers(page: number = 1, limit: number = 10, search?: string, user_id?: string, displayName?: string) {
     try {
       const skip = (page - 1) * limit;
-      
+
       let where: any = {};
-      
+
       if (search) {
         where.OR = [
           { email: { contains: search, mode: 'insensitive' as any } },
           { displayName: { contains: search, mode: 'insensitive' as any } },
         ];
       }
-      
+
       if (user_id) {
         where.user_id = { contains: user_id, mode: 'insensitive' as any };
       }
-      
+
       if (displayName) {
         where.displayName = { contains: displayName, mode: 'insensitive' as any };
       }
@@ -389,8 +388,6 @@ export class UserService {
             photo: true,
             gender: true,
             location: true,
-            preferredDays: true,
-            timeRange: true,
             preferredGames: {
               select: {
                 gameName: true,

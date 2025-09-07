@@ -19,15 +19,22 @@ export const authenticateToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('Auth - Starting authentication check');
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    console.log('Auth - Auth header:', authHeader);
+    console.log('Auth - Token:', token ? 'Present' : 'Missing');
 
     if (!token) {
       throw new AuthenticationError('Access token required');
     }
 
+    console.log('Auth - Token length:', token?.length || 0);
+    console.log('Auth - Secret length:', (config.jwt.secret || '').length);
     const decoded = jwt.verify(token, config.jwt.secret) as any;
-    
+    console.log('Auth - Decoded token:', decoded);
+
     if (!decoded.userId) {
       throw new AuthenticationError('Invalid token format');
     }
@@ -38,13 +45,17 @@ export const authenticateToken = async (
       select: { user_id: true, email: true, displayName: true },
     });
 
+    console.log('Auth - User found:', user);
+
     if (!user) {
       throw new AuthenticationError('User no longer exists');
     }
 
     req.user = user;
+    console.log('Auth - Authentication successful');
     next();
   } catch (error) {
+    console.error('Auth - Authentication error:', error);
     if (error instanceof jwt.JsonWebTokenError) {
       next(new AuthenticationError('Invalid token'));
     } else if (error instanceof jwt.TokenExpiredError) {
@@ -97,7 +108,7 @@ export const optionalAuth = async (
 
     if (token) {
       const decoded = jwt.verify(token, config.jwt.secret) as any;
-      
+
       if (decoded.userId) {
         const user = await prisma.user.findUnique({
           where: { user_id: decoded.userId },

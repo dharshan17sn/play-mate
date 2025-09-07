@@ -76,7 +76,7 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ displayName: `Updated-${Date.now()}` });
+      .send({ displayName: 'Test User Updated' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('success', true);
@@ -88,10 +88,10 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         preferredGames: ['Cricket', 'Football'],
         preferredDays: ['MONDAY', 'WEDNESDAY'],
-        timeRange: '18:00-22:00'
+        timeRange: ['18:00-22:00']
       });
 
     expect(res.status).toBe(200);
@@ -106,7 +106,7 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         preferredGames: ['Basketball', 'Tennis']
       });
 
@@ -124,7 +124,7 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         preferredGames: ['NonExistentGame1', 'NonExistentGame2']
       });
 
@@ -139,9 +139,9 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         preferredDays: ['TUESDAY', 'THURSDAY', 'SATURDAY'],
-        timeRange: '19:00-23:00'
+        timeRange: ['19:00-23:00']
       });
 
     expect(res.status).toBe(200);
@@ -149,7 +149,8 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     expect(res.body.data).toHaveProperty('preferredDays');
     expect(res.body.data).toHaveProperty('timeRange');
     expect(Array.isArray(res.body.data.preferredDays)).toBe(true);
-    expect(res.body.data.timeRange).toBe('19:00-23:00');
+    expect(Array.isArray(res.body.data.timeRange)).toBe(true);
+    expect(res.body.data.timeRange).toContain('19:00-23:00');
   });
 
   it('should reject invalid time range format (auth)', async () => {
@@ -158,8 +159,8 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
-        timeRange: 'Time range must be in format HH:MM-HH:MM'
+      .send({
+        timeRange: ['Invalid time format']
       });
 
     expect(res.status).toBe(400);
@@ -173,7 +174,7 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         preferredDays: ['INVALID_DAY', 'MONDAY']
       });
 
@@ -187,13 +188,13 @@ describe('User Routes (login with email/user_id + password, no OTP)', () => {
     const res = await request(app)
       .put(`${base}/profile`)
       .set('Authorization', `Bearer ${AUTH_TOKEN}`)
-      .send({ 
+      .send({
         displayName: `CompleteUpdate-${Date.now()}`,
         photo: 'https://example.com/new-photo.jpg',
         gender: 'male',
         location: 'San Francisco',
         preferredDays: ['FRIDAY', 'SATURDAY', 'SUNDAY'],
-        timeRange: '20:00-02:00',
+        timeRange: ['20:00-02:00'],
         preferredGames: ['Volleyball', 'Hockey']
       });
 

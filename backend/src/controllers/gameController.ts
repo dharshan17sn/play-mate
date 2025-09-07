@@ -11,7 +11,7 @@ export class GameController {
   static getAllGames = asyncErrorHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    
+
     const result = await GameService.getAllGames(page, limit);
 
     logger.info('All games retrieved successfully');
@@ -31,7 +31,7 @@ export class GameController {
    */
   static getGameById = asyncErrorHandler(async (req: Request, res: Response) => {
     const { name } = req.params;
-    
+
     if (!name) {
       return res.status(400).json(
         ResponseBuilder.validationError('Game name is required')
@@ -69,6 +69,20 @@ export class GameController {
     logger.info('Default games initialized successfully');
     res.status(200).json(
       ResponseBuilder.success(undefined, 'Default games initialized successfully')
+    );
+  });
+
+  /**
+   * Delete a game by name
+   */
+  static deleteGame = asyncErrorHandler(async (req: Request, res: Response) => {
+    const { name, force } = req.body;
+
+    await GameService.deleteGameByName(name, { force });
+
+    logger.info(`Game deleted successfully: ${name}`);
+    res.status(200).json(
+      ResponseBuilder.success({ deleted: true }, 'Game deleted successfully')
     );
   });
 }

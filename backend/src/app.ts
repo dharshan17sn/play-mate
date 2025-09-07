@@ -1,5 +1,5 @@
 import express from "express";
-import type { Request, Response} from 'express';
+import type { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -16,6 +16,8 @@ import userRoutes from './routes/userRoutes';
 import teamRoutes from './routes/teamRoutes';
 import invitationRoutes from './routes/invitationRoutes';
 import gameRoutes from './routes/gameRoutes';
+import friendRoutes from './routes/friendRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 // Create Express app
 const app = express();
@@ -32,15 +34,20 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
-// app.use(cors({
-//   origin: config.cors.allowedOrigins,
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-//   allowedHeaders: ['Content-Type', 'Authorization'],
-// }));
-
-app.use(cors());
+// CORS configuration - allow Authorization header and common localhost dev origins
+const allowedSet = new Set(config.cors.allowedOrigins);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+    if (allowedSet.has(origin) || isLocalhost) return callback(null, true);
+    return callback(null, false as any);
+  },
+  credentials: false,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+}));
 
 
 // Compression middleware
@@ -85,6 +92,8 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/teams', teamRoutes);
 app.use('/api/v1/invitations', invitationRoutes);
 app.use('/api/v1/games', gameRoutes);
+app.use('/api/v1/friends', friendRoutes);
+app.use('/api/v1/chat', chatRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

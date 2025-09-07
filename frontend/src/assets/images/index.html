@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SportsBet Background Clean</title>
+    <style>
+        :root {
+            --bg-1: #2b0064;
+            --bg-2: #0a2aa6;
+            --bg-3: #6a00a6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            background: linear-gradient(180deg, #53008f 0%, #25004a 65%, #0b1a6e 100%);
+            font-family: sans-serif;
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .hero-inner {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            align-items: center;
+            padding: 120px 28px 140px;
+            height: 100%;
+        }
+
+        .hero-art {
+            position: relative;
+            min-height: 420px;
+            height: 100%;
+        }
+
+        /* 🔵 Dotted overlay */
+
+        .dots-top-right {
+            position: absolute;
+            margin-top: -10%;
+            margin-left: 100%;
+            width: 8%;
+            height: 90vh;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.25) 1.4px, transparent 1.8px);
+            background-size: 5px 5px;
+            background-position: 0 1px;
+            opacity: 2;
+            transform-origin: top center;
+            transform: rotate(50deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+        /* 🔵 Bottom-left dots */
+        .dots-bottom-left {
+            position: absolute;
+            margin-top: -15%;
+            margin-left: 97%;
+            width: 4%;
+            height: 70vh;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.25) 1.4px, transparent 1.8px);
+            background-size: 5px 5px;
+            background-position: 0 1px;
+            opacity: 0.8;
+            transform-origin: top center;
+            transform: rotate(50deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+        /* 🔵 Bottom-right dots */
+        .dots-bottom-right {
+            position: absolute;
+            margin-top: 1%;
+            margin-left: 102%;
+            width: 4%;
+            height: 45vh;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.25) 1.4px, transparent 1.8px);
+            background-size: 5px 5px;
+            background-position: 0 1px;
+            opacity: 0.8;
+            transform-origin: top center;
+            transform: rotate(50deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+        .line-top-right {
+            position: absolute;
+            margin-top: -12%;
+            margin-left: 13%;
+            width: 8%;
+            height: 80vh;
+
+            /* Change radial-gradient to linear-gradient for lines */
+            background-image: repeating-linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0.25) 0px,
+                    rgba(255, 255, 255, 0.25) 2px,
+                    transparent 2px,
+                    transparent 6px);
+
+            background-size: 100% auto;
+            background-position: 0 0;
+            opacity: 1.2;
+            /* reduce from 2, as opacity > 1 is invalid */
+            transform-origin: top center;
+            transform: rotate(45deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+
+        .vline-top-right {
+            position: absolute;
+            margin-top: 25%;
+            margin-left: 105%;
+            width: 8%;
+            height: 80vh;
+
+            /* Vertical lines instead of horizontal */
+            background-image: repeating-linear-gradient(to right,
+                    rgba(255, 255, 255, 0.25) 0px,
+                    rgba(255, 255, 255, 0.25) 2px,
+                    transparent 2px,
+                    transparent 6px);
+
+            background-size: auto 100%;
+            background-position: 0 0;
+            opacity: 1;
+            /* keep within valid range */
+            transform-origin: top center;
+            transform: rotate(45deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+        .vline2-top-right {
+            position: absolute;
+            margin-top: 43%;
+            margin-left: -7%;
+            width: 8%;
+            height: 60vh;
+
+            /* Vertical lines instead of horizontal */
+            background-image: repeating-linear-gradient(to right,
+                    rgba(255, 255, 255, 0.25) 0px,
+                    rgba(255, 255, 255, 0.25) 2px,
+                    transparent 2px,
+                    transparent 6px);
+
+            background-size: auto 100%;
+            background-position: 0 0;
+            opacity: 1;
+            /* keep within valid range */
+            transform-origin: top center;
+            transform: rotate(225deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+        .dots1-bottom-right {
+            position: absolute;
+            margin-top: 35%;
+            margin-left: -7%;
+            width: 4%;
+            height: 60vh;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.25) 1.4px, transparent 1.8px);
+            background-size: 5px 5px;
+            background-position: 0 1px;
+            opacity: 0.8;
+            transform-origin: top center;
+            transform: rotate(225deg);
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+
+            /* Stronger fade from top */
+            -webkit-mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-position: top center;
+            mask-image: linear-gradient(to bottom,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.9) 5%,
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.4) 30%,
+                    transparent 70%);
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: top center;
+        }
+
+
+        .ring {
+            position: absolute;
+            right: 20%;
+            top: 80%;
+            width: 255px;
+            aspect-ratio: 1/1;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(170, 64, 232, 0.8) 0%, rgba(170, 64, 232, 0.1) 80%, transparent 100%);
+            transform: translate(50%, -50%);
+            z-index: 3;
+        }
+
+        .ring-outer-1 {
+            position: absolute;
+            right: 20%;
+            top: 80%;
+            width: 345px;
+            aspect-ratio: 1/1;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(170, 64, 232, 0.4) 0%, transparent 80%);
+            transform: translate(50%, -50%);
+            z-index: 2;
+        }
+
+        .ring-outer-2 {
+            position: absolute;
+            right: 20%;
+            top: 80%;
+            width: 400px;
+            aspect-ratio: 1/1;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(170, 64, 232, 0.2) 0%, transparent 90%);
+            transform: translate(50%, -50%);
+            z-index: 1;
+        }
+
+        .players-image {
+            position: absolute;
+            right: 20%;
+            top: 80%;
+            transform: translate(50%, -50%);
+            z-index: 4;
+            width: 650px;
+            height: auto;
+        }
+
+        .players-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .footer-fade {
+            height: 0px;
+            background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .25));
+        }
+    </style>
+</head>
+
+<body>
+
+    <section class="hero">
+        <div class="hero-inner">
+            <div class="hero-art">
+                <!-- ✅ Dotted Overlay -->
+                <div class="dots-top-right"></div>
+                <div class="dots-bottom-left"></div>
+                <div class="dots-bottom-right"></div>
+                <div class="line-top-right"></div>
+                <div class="vline-top-right"></div>
+                <div class="vline2-top-right"></div>
+                <div class="dots1-bottom-right"></div>
+
+                <div class="ring-outer-2"></div>
+                <div class="ring-outer-1"></div>
+                <div class="ring"></div>
+                <div class="players-image"><img src="Adobe Express - file.png" alt="Players"></div>
+            </div>
+        </div>
+        <div class="footer-fade"></div>
+    </section>
+
+</body>
+
+</html>

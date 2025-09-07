@@ -24,6 +24,7 @@ enum TeamMemberStatus {
   REJECTED
 }
 
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -46,7 +47,7 @@ model User {
   passwordHash String
   location     String?
   preferredDays DayOfWeek[] @default([])
-  timeRange    String? // Format: "HH:MM-HH:MM" e.g., "18:00-22:00"
+  timeRange    String[] @default([]) // Array of time ranges in format "HH:MM-HH:MM" e.g., ["18:00-22:00", "06:00-10:00"]
 
   // relations
   teams               TeamMember[]
@@ -55,6 +56,15 @@ model User {
   tournaments         TournamentTeam[] @relation("UserTournamentTeams")
   preferredGames      UserGame[]
   messages            Message[]
+  teamMessages        TeamMessage[]     @relation("TeamMessagesSent")
+  friendRequestsSent   FriendRequest[]  @relation("FriendRequestFrom")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestTo")
+  friendsAsA           Friend[]         @relation("FriendUserA")
+  friendsAsB           Friend[]         @relation("FriendUserB")
+  chatsAsA             Chat[]           @relation("ChatUserA")
+  chatsAsB             Chat[]           @relation("ChatUserB")
+  chatMessages         ChatMessage[]    @relation("ChatMessageSender")
+
 
   // teams/tournaments created by user
   createdTeams       Team[]       @relation("TeamCreator")
@@ -69,21 +79,26 @@ model Game {
 }
 
 model Team {
-  id          String  @id @default(uuid())
-  title       String
-  photo       String?
-  description String?
+  id              String   @id @default(uuid())
+  title           String
+  photo           String?
+  description     String?
+  gameName        String
+  noOfPlayers     Int?     // Optional maximum number of players
+  isPublic        Boolean  @default(true) // true for public, false for private
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   creatorId String
   creator   User   @relation("TeamCreator", fields: [creatorId], references: [user_id])
 
-  gameName String
   game     Game   @relation(fields: [gameName], references: [name])
 
   members     TeamMember[]
   tournaments TournamentTeam[]
   joinRequests Invitation[]
   messages    Message[]
+  teamMessages TeamMessage[]
 }
 
 model TeamMember {
@@ -145,6 +160,22 @@ model Invitation {
   team     Team @relation(fields: [teamId], references: [id])
 }
 
+model TeamMessage {
+  id        String   @id @default(uuid())
+  teamId    String
+  senderId  String
+  content   String
+  sentAt    DateTime @default(now())
+  readAt    DateTime?
+
+  team   Team @relation(fields: [teamId], references: [id])
+  sender User @relation("TeamMessagesSent", fields: [senderId], references: [user_id])
+
+  @@index([teamId, sentAt])
+}
+
+
+
 model UserGame {
   id     String @id @default(uuid())
   userId String
@@ -167,4 +198,66 @@ model Message {
   sender     User        @relation(fields: [senderId], references: [user_id])
   team       Team?       @relation(fields: [teamId], references: [id])
   tournament Tournament? @relation(fields: [tournamentId], references: [id])
+}
+
+//
+// Friends system
+//
+
+model FriendRequest {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  status     InvitationStatus @default(PENDING)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("FriendRequestFrom", fields: [fromUserId], references: [user_id])
+  toUser   User @relation("FriendRequestTo", fields: [toUserId], references: [user_id])
+
+  @@index([toUserId, status, createdAt])
+  @@index([fromUserId, createdAt])
+}
+
+model Friend {
+  id       String   @id @default(uuid())
+  userAId  String
+  userBId  String
+  createdAt DateTime @default(now())
+
+  userA User @relation("FriendUserA", fields: [userAId], references: [user_id])
+  userB User @relation("FriendUserB", fields: [userBId], references: [user_id])
+
+  @@unique([userAId, userBId])
+}
+
+//
+// Chat system
+//
+
+model Chat {
+  id        String   @id @default(uuid())
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  userA User @relation("ChatUserA", fields: [userAId], references: [user_id])
+  userB User @relation("ChatUserB", fields: [userBId], references: [user_id])
+  messages ChatMessage[]
+
+  @@unique([userAId, userBId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  content   String
+  sentAt    DateTime @default(now())
+  readAt    DateTime?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation("ChatMessageSender", fields: [senderId], references: [user_id])
+
+  @@index([chatId, sentAt])
 }

@@ -1,9 +1,9 @@
 import { prisma } from '../config/database';
-import { 
-  NotFoundError, 
-  ConflictError, 
+import {
+  NotFoundError,
+  ConflictError,
   ValidationError,
-  ForbiddenError 
+  ForbiddenError
 } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { TeamService } from './teamService';
@@ -75,7 +75,7 @@ export class InvitationService {
 
       // Create join requests for all team admins
       const invitations = await Promise.all(
-        teamAdmins.map(admin => 
+        teamAdmins.map(admin =>
           prisma.invitation.create({
             data: {
               fromUserId: data.fromUserId,
@@ -262,7 +262,7 @@ export class InvitationService {
   static async getJoinRequestsSent(userId: string) {
     try {
       const invitations = await prisma.invitation.findMany({
-        where: { 
+        where: {
           fromUserId: userId,
           // Only get one invitation per team to avoid duplicates
         },
@@ -297,7 +297,7 @@ export class InvitationService {
     try {
       // Get teams where user is admin
       const adminTeams = await prisma.teamMember.findMany({
-        where: { 
+        where: {
           userId: adminUserId,
           isAdmin: true
         },
@@ -307,7 +307,7 @@ export class InvitationService {
       const teamIds = adminTeams.map(member => member.teamId);
 
       const invitations = await prisma.invitation.findMany({
-        where: { 
+        where: {
           toUserId: adminUserId,
           teamId: { in: teamIds },
           status: 'PENDING'
@@ -450,7 +450,7 @@ export class InvitationService {
 
       // Get team members with admin privileges
       const adminMembers = await prisma.teamMember.findMany({
-        where: { 
+        where: {
           teamId,
           isAdmin: true
         },
@@ -595,6 +595,148 @@ export class InvitationService {
       return { success: true };
     } catch (error) {
       logger.error(`Error removing team admin ${userId} from team ${teamId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve team join request
+   */
+  static async approveTeamJoinRequest(invitationId: string, approverUserId: string) {
+    try {
+      // Get the invitation
+      const invitation = await prisma.invitation.findUnique({
+        where: { id: invitationId },
+        include: {
+          team: {
+            include: { creator: true }
+          },
+          fromUser: true
+        }
+      });
+
+      if (!invitation) {
+        throw new NotFoundError('Invitation not found');
+      }
+
+      // Check if the approver is the team creator or an admin
+      const teamMember = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: approverUserId,
+            teamId: invitation.teamId
+          }
+        }
+      });
+
+      const isCreator = invitation.team.creatorId === approverUserId;
+      const isAdmin = teamMember?.isAdmin || false;
+
+      if (!isCreator && !isAdmin) {
+        throw new ForbiddenError('Only team creators or admins can approve join requests');
+      }
+
+      if (invitation.status !== 'PENDING') {
+        throw new ValidationError('Invitation is not pending');
+      }
+
+      // Update invitation status
+      await prisma.invitation.update({
+        where: { id: invitationId },
+        data: { status: 'ACCEPTED' }
+      });
+
+      // Add user to team
+      await prisma.teamMember.create({
+        data: {
+          userId: invitation.fromUserId,
+          teamId: invitation.teamId,
+          status: 'ACCEPTED',
+          isAdmin: false
+        }
+      });
+
+      // Emit realtime notification to the user who requested to join
+      const { RealtimeService } = await import('./realtime');
+      RealtimeService.emitToUser(invitation.fromUserId, 'team:join:approved', {
+        invitationId,
+        team: {
+          id: invitation.team.id,
+          title: invitation.team.title
+        },
+        status: 'ACCEPTED'
+      });
+
+      logger.info(`Team join request approved: ${invitationId} by ${approverUserId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error approving team join request ${invitationId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject team join request
+   */
+  static async rejectTeamJoinRequest(invitationId: string, rejectorUserId: string) {
+    try {
+      // Get the invitation
+      const invitation = await prisma.invitation.findUnique({
+        where: { id: invitationId },
+        include: {
+          team: {
+            include: { creator: true }
+          },
+          fromUser: true
+        }
+      });
+
+      if (!invitation) {
+        throw new NotFoundError('Invitation not found');
+      }
+
+      // Check if the rejector is the team creator or an admin
+      const teamMember = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: rejectorUserId,
+            teamId: invitation.teamId
+          }
+        }
+      });
+
+      const isCreator = invitation.team.creatorId === rejectorUserId;
+      const isAdmin = teamMember?.isAdmin || false;
+
+      if (!isCreator && !isAdmin) {
+        throw new ForbiddenError('Only team creators or admins can reject join requests');
+      }
+
+      if (invitation.status !== 'PENDING') {
+        throw new ValidationError('Invitation is not pending');
+      }
+
+      // Update invitation status
+      await prisma.invitation.update({
+        where: { id: invitationId },
+        data: { status: 'REJECTED' }
+      });
+
+      // Emit realtime notification to the user who requested to join
+      const { RealtimeService } = await import('./realtime');
+      RealtimeService.emitToUser(invitation.fromUserId, 'team:join:rejected', {
+        invitationId,
+        team: {
+          id: invitation.team.id,
+          title: invitation.team.title
+        },
+        status: 'REJECTED'
+      });
+
+      logger.info(`Team join request rejected: ${invitationId} by ${rejectorUserId}`);
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error rejecting team join request ${invitationId}:`, error);
       throw error;
     }
   }
