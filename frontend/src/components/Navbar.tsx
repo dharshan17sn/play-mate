@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
-
+import ShinyText from '../components/ShinyText';
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
     const [isScrolled, setIsScrolled] = useState(false);
@@ -99,7 +99,7 @@ const Navbar: React.FC = () => {
                                 : 'bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white shadow-lg'
                                 }`}
                         >
-                            Join Now
+                           <ShinyText text="Join Now" disabled={false} speed={3} className='custom-class' />
                         </button>
                     </div>
                 </div>

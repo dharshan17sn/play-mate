@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import LogoCarousel from '../components/LogoCarousel';
+import ShinyText from '../components/ShinyText';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -41,7 +42,7 @@ const LandingPage: React.FC = () => {
                                     onClick={() => navigate('/register')}
                                     className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-600 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-lg"
                                 >
-                                    Get Started
+                                    <ShinyText text="Get started" disabled={false} speed={3} className='custom-class' />
                                 </button>
                                 <button
                                     onClick={() => navigate('/login')}
@@ -130,11 +131,11 @@ const LandingPage: React.FC = () => {
                                 Learn More About Us
                             </button>
                         </div>
-                        <div className="text-center">
+                        {/* <div className="text-center">
                             <div className="bg-gray-200 w-full h-64 rounded-lg flex items-center justify-center">
                                 <p className="text-gray-500">Background Image Placeholder</p>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </section>
