@@ -80,6 +80,11 @@ export default function ChatPage() {
   const [teams, setTeams] = useState<TeamSummary[]>([]);
 
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 2000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
 
@@ -1701,6 +1706,10 @@ export default function ChatPage() {
                 <span style={{ fontWeight: 700 }}>Team Info</span>
               </div>
             </div>
+
+            {error && (
+              <div style={{ color: "#b91c1c", padding: "8px 16px" }}>{error}</div>
+            )}
 
             {isLoadingTeamDetails ? (
               <div style={{ padding: 16 }}>Loading…</div>
