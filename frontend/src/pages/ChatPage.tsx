@@ -2052,7 +2052,7 @@ export default function ChatPage() {
                                       visibility:
                                         hoveredMemberId === m.id ||
                                         openMemberMenuId === m.id ||
-                                        isMobile
+                                        (isMobile || isTablet)
                                           ? "visible"
                                           : "hidden",
                                     }}
@@ -2066,7 +2066,7 @@ export default function ChatPage() {
                                       style={{
                                         position: "absolute",
                                         right: 0,
-                                        top: 24,
+                                        bottom: 28,
                                         background: "#fff",
                                         border: "1px solid #eee",
                                         borderRadius: 6,
@@ -2663,7 +2663,7 @@ export default function ChatPage() {
                                             visibility:
                                               hoveredMemberId === m.id ||
                                               openMemberMenuId === m.id ||
-                                              isMobile
+                                              (isMobile || isTablet)
                                                 ? "visible"
                                                 : "hidden",
                                           }}
