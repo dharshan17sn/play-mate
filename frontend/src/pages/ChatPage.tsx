@@ -2034,7 +2034,7 @@ export default function ChatPage() {
                                       mm.isAdmin
                                   ));
 
-                              const showMenu = isCurrentUserAdmin && !m.isAdmin;
+                              const showMenu = isCurrentUserAdmin;
 
                               return showMenu ? (
                                 <div style={{ position: "relative" }}>
@@ -2073,104 +2073,159 @@ export default function ChatPage() {
                                         boxShadow:
                                           "0 8px 20px rgba(0,0,0,0.08)",
                                         minWidth: 160,
-                                        zIndex: 30,
+                                        zIndex: 80,
                                       }}
                                     >
-                                      <button
-                                        disabled={
-                                          memberActionLoading ===
-                                          "admin:" + m.id
-                                        }
-                                        onClick={async () => {
-                                          try {
-                                            setMemberActionLoading(
+                                      {m.isAdmin ? (
+                                        <button
+                                          disabled={
+                                            memberActionLoading ===
+                                            "dismiss:" + m.id
+                                          }
+                                          onClick={async () => {
+                                            try {
+                                              setMemberActionLoading(
+                                                "dismiss:" + m.id
+                                              );
+
+                                              await apiService.updateMemberAdmin(
+                                                selectedTeamId as string,
+                                                m.id,
+                                                false
+                                              );
+
+                                              setTeamDetails((prev: any) => ({
+                                                ...prev,
+                                                members: prev.members.map(
+                                                  (mm: any) =>
+                                                    mm.id === m.id
+                                                      ? { ...mm, isAdmin: false }
+                                                      : mm
+                                                ),
+                                              }));
+
+                                              setOpenMemberMenuId(null);
+                                            } catch (err: any) {
+                                              setError(
+                                                err?.message ||
+                                                  "Failed to dismiss admin"
+                                              );
+                                            } finally {
+                                              setMemberActionLoading(null);
+                                            }
+                                          }}
+                                          style={{
+                                            display: "block",
+                                            width: "100%",
+                                            textAlign: "left",
+                                            padding: "8px 10px",
+                                            border: "none",
+                                            background: "#fff",
+                                            cursor: "pointer",
+                                            color: "#b45309",
+                                          }}
+                                        >
+                                          Dismiss admin
+                                        </button>
+                                      ) : (
+                                        <>
+                                          <button
+                                            disabled={
+                                              memberActionLoading ===
                                               "admin:" + m.id
-                                            );
+                                            }
+                                            onClick={async () => {
+                                              try {
+                                                setMemberActionLoading(
+                                                  "admin:" + m.id
+                                                );
 
-                                            await apiService.makeMemberAdmin(
-                                              selectedTeamId as string,
-                                              m.id
-                                            );
+                                                await apiService.makeMemberAdmin(
+                                                  selectedTeamId as string,
+                                                  m.id
+                                                );
 
-                                            setTeamDetails((prev: any) => ({
-                                              ...prev,
-                                              members: prev.members.map(
-                                                (mm: any) =>
-                                                  mm.id === m.id
-                                                    ? { ...mm, isAdmin: true }
-                                                    : mm
-                                              ),
-                                            }));
+                                                setTeamDetails((prev: any) => ({
+                                                  ...prev,
+                                                  members: prev.members.map(
+                                                    (mm: any) =>
+                                                      mm.id === m.id
+                                                        ? { ...mm, isAdmin: true }
+                                                        : mm
+                                                  ),
+                                                }));
 
-                                            setOpenMemberMenuId(null);
-                                          } catch (err: any) {
-                                            setError(
-                                              err?.message ||
-                                                "Failed to make admin"
-                                            );
-                                          } finally {
-                                            setMemberActionLoading(null);
-                                          }
-                                        }}
-                                        style={{
-                                          display: "block",
-                                          width: "100%",
-                                          textAlign: "left",
-                                          padding: "8px 10px",
-                                          border: "none",
-                                          background: "#fff",
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        Make admin
-                                      </button>
+                                                setOpenMemberMenuId(null);
+                                              } catch (err: any) {
+                                                setError(
+                                                  err?.message ||
+                                                    "Failed to make admin"
+                                                );
+                                              } finally {
+                                                setMemberActionLoading(null);
+                                              }
+                                            }}
+                                            style={{
+                                              display: "block",
+                                              width: "100%",
+                                              textAlign: "left",
+                                              padding: "8px 10px",
+                                              border: "none",
+                                              background: "#fff",
+                                              cursor: "pointer",
+                                            }}
+                                          >
+                                            Make admin
+                                          </button>
 
-                                      <button
-                                        disabled={
-                                          memberActionLoading ===
-                                          "remove:" + m.id
-                                        }
-                                        onClick={async () => {
-                                          try {
-                                            setMemberActionLoading(
+                                          <button
+                                            disabled={
+                                              memberActionLoading ===
                                               "remove:" + m.id
-                                            );
+                                            }
+                                            onClick={async () => {
+                                              try {
+                                                setMemberActionLoading(
+                                                  "remove:" + m.id
+                                                );
 
-                                            await apiService.removeMemberFromTeam(
-                                              selectedTeamId as string,
-                                              m.id
-                                            );
+                                                await apiService.removeMemberFromTeam(
+                                                  selectedTeamId as string,
+                                                  m.id
+                                                );
 
-                                            setTeamDetails((prev: any) => ({
-                                              ...prev,
-                                              members: prev.members.filter(
-                                                (mm: any) => mm.id !== m.id
-                                              ),
-                                            }));
+                                                setTeamDetails((prev: any) => ({
+                                                  ...prev,
+                                                  members: prev.members.filter(
+                                                    (mm: any) => mm.id !== m.id
+                                                  ),
+                                                }));
 
-                                            setOpenMemberMenuId(null);
-                                          } catch (err: any) {
-                                            setError(
-                                              err?.message ||
-                                                "Failed to remove member"
-                                            );
-                                          } finally {
-                                            setMemberActionLoading(null);
-                                          }
-                                        }}
-                                        style={{
-                                          display: "block",
-                                          width: "100%",
-                                          textAlign: "left",
-                                          padding: "8px 10px",
-                                          border: "none",
-                                          background: "#fff",
-                                          cursor: "pointer",
-                                          color: "#b91c1c",
-                                        }}
-                                      >
-                                        Remove from group
-                                      </button>
+                                                setOpenMemberMenuId(null);
+                                              } catch (err: any) {
+                                                setError(
+                                                  err?.message ||
+                                                    "Failed to remove member"
+                                                );
+                                              } finally {
+                                                setMemberActionLoading(null);
+                                              }
+                                            }}
+                                            style={{
+                                              display: "block",
+                                              width: "100%",
+                                              textAlign: "left",
+                                              padding: "8px 10px",
+                                              border: "none",
+                                              background: "#fff",
+                                              cursor: "pointer",
+                                              color: "#b91c1c",
+                                            }}
+                                          >
+                                            Remove from group
+                                          </button>
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -2187,977 +2242,696 @@ export default function ChatPage() {
             )}
           </div>
         ) : (
-          <div
-            style={{
-              position: "absolute",
-              top: 56,
-              left: 360,
-              width: 700,
-              height: "70%",
-              minWidth: 640,
-              minHeight: 420,
-              background: "#fff",
-              border: "1px solid #eee",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-              borderRadius: 10,
-              zIndex: 60,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
+          <>
             <div
+              onClick={() => {
+                setOpenMemberMenuId(null);
+                setIsTeamInfoOpen(false);
+              }}
+              style={{ position: "fixed", inset: 0, zIndex: 59, background: "transparent" }}
+            />
+            <div
+              onClick={(e) => e.stopPropagation()}
               style={{
-                padding: 12,
-                borderBottom: "1px solid #eee",
+                position: "absolute",
+                top: 56,
+                left: 360,
+                width: 700,
+                height: "70%",
+                minWidth: 640,
+                minHeight: 420,
+                background: "#fff",
+                border: "1px solid #eee",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+                borderRadius: 10,
+                zIndex: 60,
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                flexDirection: "column",
               }}
             >
-              <span style={{ fontWeight: 700 }}>Team Info</span>
-
-              <button
-                onClick={() => setIsTeamInfoOpen(false)}
+              <div
                 style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: 18,
+                  padding: 12,
+                  borderBottom: "1px solid #eee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
-                ×
-              </button>
-            </div>
+                <span style={{ fontWeight: 700 }}>Team Info</span>
 
-            {isLoadingTeamDetails ? (
-              <div style={{ padding: 16 }}>Loading…</div>
-            ) : !teamDetails ? (
-              <div style={{ padding: 16, color: "#6b7280" }}>
-                No team info available.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-                <div
+                <button
+                  onClick={() => {
+                    setOpenMemberMenuId(null);
+                    setIsTeamInfoOpen(false);
+                  }}
                   style={{
-                    width: 220,
-                    borderRight: "1px solid #f2f2f2",
-                    display: "flex",
-                    flexDirection: "column",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    fontSize: 18,
                   }}
                 >
-                  <button
-                    onClick={() => setTeamInfoTab("overview")}
-                    style={{
-                      textAlign: "left",
-                      padding: "12px 14px",
-                      border: "none",
-                      background:
-                        teamInfoTab === "overview" ? "#eef2ff" : "#fff",
-                      color: teamInfoTab === "overview" ? "#1d4ed8" : "#374151",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Overview
-                  </button>
+                  ×
+                </button>
+              </div>
 
-                  <button
-                    onClick={() => setTeamInfoTab("members")}
-                    style={{
-                      textAlign: "left",
-                      padding: "12px 14px",
-                      border: "none",
-                      background:
-                        teamInfoTab === "members" ? "#eef2ff" : "#fff",
-                      color: teamInfoTab === "members" ? "#1d4ed8" : "#374151",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Members
-                  </button>
+              {isLoadingTeamDetails ? (
+                <div style={{ padding: 16 }}>Loading…</div>
+              ) : !teamDetails ? (
+                <div style={{ padding: 16, color: "#6b7280" }}>
+                  No team info available.
                 </div>
-
-                <div style={{ flex: 1, overflowY: "auto" }}>
-                  {teamInfoTab === "overview" ? (
-                    <div
+              ) : (
+                <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+                  <div
+                    style={{
+                      width: 220,
+                      borderRight: "1px solid #f2f2f2",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
+                    <button
+                      onClick={() => setTeamInfoTab("overview")}
                       style={{
-                        padding: 16,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 12,
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        border: "none",
+                        background:
+                          teamInfoTab === "overview" ? "#eef2ff" : "#fff",
+                        color: teamInfoTab === "overview" ? "#1d4ed8" : "#374151",
+                        fontWeight: 600,
+                        cursor: "pointer",
                       }}
                     >
+                      Overview
+                    </button>
+
+                    <button
+                      onClick={() => setTeamInfoTab("members")}
+                      style={{
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        border: "none",
+                        background:
+                          teamInfoTab === "members" ? "#eef2ff" : "#fff",
+                        color: teamInfoTab === "members" ? "#1d4ed8" : "#374151",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Members
+                    </button>
+                  </div>
+
+                  <div
+                    style={{ flex: 1, overflowY: "auto" }}
+                    onClick={(e) => {
+                      if (openMemberMenuId) setOpenMemberMenuId(null);
+                      if (e.currentTarget === e.target) {
+                        setIsTeamInfoOpen(false);
+                      }
+                    }}
+                  >
+                    {teamInfoTab === "overview" ? (
                       <div
                         style={{
-                          width: 72,
-                          height: 72,
-                          borderRadius: "50%",
-                          background: "#e5e7eb",
-                          overflow: "hidden",
+                          padding: 16,
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          flexDirection: "column",
+                          gap: 12,
                         }}
                       >
-                        {teamDetails.photo ? (
-                          <img
-                            src={teamDetails.photo}
-                            alt={teamDetails.title}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <span style={{ fontWeight: 700 }}>
-                            {(teamDetails.title || "?")[0]}
-                          </span>
-                        )}
-                      </div>
-
-                      {(() => {
-                        const isAdmin =
-                          teamDetails?.creatorId === currentUserId ||
-                          (Array.isArray(teamDetails?.members) &&
-                            teamDetails.members.some(
-                              (m: any) =>
-                                (m.userId === currentUserId ||
-                                  m.user?.user_id === currentUserId) &&
-                                m.isAdmin
-                            ));
-
-                        return (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            {isEditingTeamTitle ? (
-                              <input
-                                value={editTeamTitle}
-                                onChange={(e) =>
-                                  setEditTeamTitle(e.target.value)
-                                }
-                                onKeyDown={async (e) => {
-                                  if (e.key === "Enter" && selectedTeamId) {
-                                    const newTitle = editTeamTitle.trim();
-
-                                    try {
-                                      await apiService.updateTeam(
-                                        selectedTeamId,
-                                        { title: newTitle }
-                                      );
-
-                                      setTeamDetails((prev: any) => ({
-                                        ...prev,
-                                        title: newTitle,
-                                      }));
-
-                                      setTeams((prev) =>
-                                        prev.map((t) =>
-                                          t.id === selectedTeamId
-                                            ? { ...t, title: newTitle }
-                                            : t
-                                        )
-                                      );
-
-                                      setIsEditingTeamTitle(false);
-                                    } catch (err: any) {
-                                      setError(
-                                        err?.message || "Failed to update title"
-                                      );
-                                    }
-                                  } else if (e.key === "Escape") {
-                                    setIsEditingTeamTitle(false);
-                                  }
-                                }}
-                                autoFocus
-                                style={{
-                                  fontWeight: 800,
-                                  fontSize: 20,
-                                  border: "1px solid #e5e7eb",
-                                  borderRadius: 6,
-                                  padding: "4px 8px",
-                                }}
-                              />
-                            ) : (
-                              <div style={{ fontWeight: 800, fontSize: 20 }}>
-                                {teamDetails.title}
-                              </div>
-                            )}
-
-                            {isAdmin && !isEditingTeamTitle && (
-                              <button
-                                title="Edit title"
-                                onClick={() => {
-                                  setEditTeamTitle(teamDetails.title || "");
-                                  setIsEditingTeamTitle(true);
-                                }}
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                ✎
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      <div style={{ color: "#374151" }}>
-                        Game:{" "}
-                        {teamDetails.gameName || teamDetails.game?.name || "—"}
-                      </div>
-
-                      <div style={{ color: "#374151" }}>
-                        Created:{" "}
-                        {teamDetails.createdAt
-                          ? new Date(teamDetails.createdAt).toLocaleString()
-                          : "—"}
-                      </div>
-
-                      {(() => {
-                        const isAdmin =
-                          teamDetails?.creatorId === currentUserId ||
-                          (Array.isArray(teamDetails?.members) &&
-                            teamDetails.members.some(
-                              (m: any) =>
-                                (m.userId === currentUserId ||
-                                  m.user?.user_id === currentUserId) &&
-                                m.isAdmin
-                            ));
-
-                        return (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            {isEditingTeamDescription ? (
-                              <input
-                                value={editTeamDescription}
-                                onChange={(e) =>
-                                  setEditTeamDescription(e.target.value)
-                                }
-                                onKeyDown={async (e) => {
-                                  if (e.key === "Enter" && selectedTeamId) {
-                                    const newDesc = editTeamDescription.trim();
-
-                                    try {
-                                      await apiService.updateTeam(
-                                        selectedTeamId,
-                                        { description: newDesc }
-                                      );
-
-                                      setTeamDetails((prev: any) => ({
-                                        ...prev,
-                                        description: newDesc,
-                                      }));
-
-                                      setTeams((prev) =>
-                                        prev.map((t) =>
-                                          t.id === selectedTeamId
-                                            ? { ...t, description: newDesc }
-                                            : t
-                                        )
-                                      );
-
-                                      setIsEditingTeamDescription(false);
-                                    } catch (err: any) {
-                                      setError(
-                                        err?.message ||
-                                          "Failed to update description"
-                                      );
-                                    }
-                                  } else if (e.key === "Escape") {
-                                    setIsEditingTeamDescription(false);
-                                  }
-                                }}
-                                autoFocus
-                                placeholder="Add description"
-                                style={{
-                                  border: "1px solid #e5e7eb",
-                                  borderRadius: 6,
-                                  padding: "6px 8px",
-                                  width: "100%",
-                                }}
-                              />
-                            ) : (
-                              <div style={{ color: "#374151" }}>
-                                Description:{" "}
-                                {teamDetails.description || "Add description"}
-                              </div>
-                            )}
-
-                            {isAdmin && !isEditingTeamDescription && (
-                              <button
-                                title="Edit description"
-                                onClick={() => {
-                                  setEditTeamDescription(
-                                    teamDetails.description || ""
-                                  );
-                                  setIsEditingTeamDescription(true);
-                                }}
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                ✎
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <div style={{ padding: 16 }}>
-                      <div style={{ marginBottom: 10 }}>
-                        <input
-                          value={memberSearch}
-                          onChange={(e) => setMemberSearch(e.target.value)}
-                          placeholder="Search members"
+                        <div
                           style={{
-                            width: "100%",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 8,
-                            padding: "8px 10px",
-                            fontSize: 14,
+                            width: 72,
+                            height: 72,
+                            borderRadius: "50%",
+                            background: "#e5e7eb",
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                           }}
-                        />
-                      </div>
-
-                      {Array.isArray(teamDetails.members) &&
-                      teamDetails.members.length > 0 ? (
-                        <ul
-                          style={{ listStyle: "none", padding: 0, margin: 0 }}
                         >
-                          {teamDetails.members
-                            .filter((m: any) => {
-                              const q = memberSearch.trim().toLowerCase();
+                          {teamDetails.photo ? (
+                            <img
+                              src={teamDetails.photo}
+                              alt={teamDetails.title}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <span style={{ fontWeight: 700 }}>
+                              {(teamDetails.title || "?")[0]}
+                            </span>
+                          )}
+                        </div>
 
-                              if (!q) return true;
+                        {(() => {
+                          const isAdmin =
+                            teamDetails?.creatorId === currentUserId ||
+                            (Array.isArray(teamDetails?.members) &&
+                              teamDetails.members.some(
+                                (m: any) =>
+                                  (m.userId === currentUserId ||
+                                    m.user?.user_id === currentUserId) &&
+                                  m.isAdmin
+                              ));
 
-                              return (m.displayName || "")
-                                .toLowerCase()
-                                .includes(q);
-                            })
-                            .map((m: any) => (
-                              <li
-                                key={m.id}
-                                onMouseEnter={() => setHoveredMemberId(m.id)}
-                                onMouseLeave={() => {
-                                  if (openMemberMenuId !== m.id)
-                                    setHoveredMemberId(null);
-                                }}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 12,
-                                  padding: "10px 0",
-                                  borderBottom: "1px solid #f3f4f6",
-                                  position: "relative",
-                                }}
-                              >
-                                <div
+                          return (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              {isEditingTeamTitle ? (
+                                <input
+                                  value={editTeamTitle}
+                                  onChange={(e) => setEditTeamTitle(e.target.value)}
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter" && selectedTeamId) {
+                                      const newTitle = editTeamTitle.trim();
+
+                                      try {
+                                        await apiService.updateTeam(
+                                          selectedTeamId,
+                                          { title: newTitle }
+                                        );
+
+                                        setTeamDetails((prev: any) => ({
+                                          ...prev,
+                                          title: newTitle,
+                                        }));
+
+                                        setTeams((prev) =>
+                                          prev.map((t) =>
+                                            t.id === selectedTeamId
+                                              ? { ...t, title: newTitle }
+                                              : t
+                                          )
+                                        );
+
+                                        setIsEditingTeamTitle(false);
+                                      } catch (err: any) {
+                                        setError(
+                                          err?.message || "Failed to update title"
+                                        );
+                                      }
+                                    } else if (e.key === "Escape") {
+                                      setIsEditingTeamTitle(false);
+                                    }
+                                  }}
+                                  autoFocus
                                   style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: "50%",
-                                    background: "#e5e7eb",
-                                    overflow: "hidden",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
+                                    fontWeight: 800,
+                                    fontSize: 20,
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                  }}
+                                />
+                              ) : (
+                                <div style={{ fontWeight: 800, fontSize: 20 }}>
+                                  {teamDetails.title}
+                                </div>
+                              )}
+
+                              {isAdmin && !isEditingTeamTitle && (
+                                <button
+                                  title="Edit title"
+                                  onClick={() => {
+                                    setEditTeamTitle(teamDetails.title || "");
+                                    setIsEditingTeamTitle(true);
+                                  }}
+                                  style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    cursor: "pointer",
                                   }}
                                 >
-                                  {m.photo ? (
-                                    <img
-                                      src={m.photo}
-                                      alt={m.displayName}
-                                      style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
-                                      }}
-                                    />
-                                  ) : (
-                                    <span style={{ fontWeight: 700 }}>
-                                      {(m.displayName || "?")[0]}
-                                    </span>
-                                  )}
-                                </div>
+                                  ✎
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
 
-                                <div
+                        <div style={{ color: "#374151" }}>
+                          Game:{" "}
+                          {teamDetails.gameName || teamDetails.game?.name || "—"}
+                        </div>
+
+                        <div style={{ color: "#374151" }}>
+                          Created:{" "}
+                          {teamDetails.createdAt
+                            ? new Date(teamDetails.createdAt).toLocaleString()
+                            : "—"}
+                        </div>
+
+                        {(() => {
+                          const isAdmin =
+                            teamDetails?.creatorId === currentUserId ||
+                            (Array.isArray(teamDetails?.members) &&
+                              teamDetails.members.some(
+                                (m: any) =>
+                                  (m.userId === currentUserId ||
+                                    m.user?.user_id === currentUserId) &&
+                                  m.isAdmin
+                              ));
+
+                          return (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              {isEditingTeamDescription ? (
+                                <input
+                                  value={editTeamDescription}
+                                  onChange={(e) => setEditTeamDescription(e.target.value)}
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter" && selectedTeamId) {
+                                      const newDesc = editTeamDescription.trim();
+
+                                      try {
+                                        await apiService.updateTeam(
+                                          selectedTeamId,
+                                          { description: newDesc }
+                                        );
+
+                                        setTeamDetails((prev: any) => ({
+                                          ...prev,
+                                          description: newDesc,
+                                        }));
+
+                                        setTeams((prev) =>
+                                          prev.map((t) =>
+                                            t.id === selectedTeamId
+                                              ? { ...t, description: newDesc }
+                                              : t
+                                          )
+                                        );
+
+                                        setIsEditingTeamDescription(false);
+                                      } catch (err: any) {
+                                        setError(
+                                          err?.message ||
+                                            "Failed to update description"
+                                        );
+                                      }
+                                    } else if (e.key === "Escape") {
+                                      setIsEditingTeamDescription(false);
+                                    }
+                                  }}
+                                  autoFocus
+                                  placeholder="Add description"
                                   style={{
-                                    flex: 1,
-                                    minWidth: 0,
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    padding: "6px 8px",
+                                    width: "100%",
+                                  }}
+                                />
+                              ) : (
+                                <div style={{ color: "#374151" }}>
+                                  Description:{" "}
+                                  {teamDetails.description || "Add description"}
+                                </div>
+                              )}
+
+                              {isAdmin && !isEditingTeamDescription && (
+                                <button
+                                  title="Edit description"
+                                  onClick={() => {
+                                    setEditTeamDescription(
+                                      teamDetails.description || ""
+                                    );
+                                    setIsEditingTeamDescription(true);
+                                  }}
+                                  style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  ✎
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div
+                        style={{ padding: 16 }}
+                        onClick={(e) => {
+                          if (openMemberMenuId) setOpenMemberMenuId(null);
+                          if (e.currentTarget === e.target) setIsTeamInfoOpen(false);
+                        }}
+                      >
+                        <div style={{ marginBottom: 10 }}>
+                          <input
+                            value={memberSearch}
+                            onChange={(e) => setMemberSearch(e.target.value)}
+                            placeholder="Search members"
+                            style={{
+                              width: "100%",
+                              border: "1px solid #e5e7eb",
+                              borderRadius: 8,
+                              padding: "8px 10px",
+                              fontSize: 14,
+                            }}
+                          />
+                        </div>
+
+                        {Array.isArray(teamDetails.members) &&
+                        teamDetails.members.length > 0 ? (
+                          <ul
+                            style={{ listStyle: "none", padding: 0, margin: 0 }}
+                          >
+                            {teamDetails.members
+                              .filter((m: any) => {
+                                const q = memberSearch.trim().toLowerCase();
+
+                                if (!q) return true;
+
+                                return (m.displayName || "")
+                                  .toLowerCase()
+                                  .includes(q);
+                              })
+                              .map((m: any) => (
+                                <li
+                                  key={m.id}
+                                  onMouseEnter={() => setHoveredMemberId(m.id)}
+                                  onMouseLeave={() => {
+                                    if (openMemberMenuId !== m.id)
+                                      setHoveredMemberId(null);
+                                  }}
+                                  style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    justifyContent: "space-between",
+                                    gap: 12,
+                                    padding: "10px 0",
+                                    borderBottom: "1px solid #f3f4f6",
+                                    position: "relative",
                                   }}
                                 >
                                   <div
                                     style={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: "50%",
+                                      background: "#e5e7eb",
+                                      overflow: "hidden",
                                       display: "flex",
                                       alignItems: "center",
-                                      gap: 8,
+                                      justifyContent: "center",
                                     }}
                                   >
-                                    <span style={{ fontWeight: 600 }}>
-                                      {m.displayName}
-                                    </span>
-
-                                    {m.isAdmin ? (
-                                      <span
+                                    {m.photo ? (
+                                      <img
+                                        src={m.photo}
+                                        alt={m.displayName}
                                         style={{
-                                          background: "#e0e7ff",
-                                          color: "#1d4ed8",
-                                          fontSize: 12,
-                                          borderRadius: 9999,
-                                          padding: "2px 8px",
-                                          fontWeight: 700,
+                                          width: "100%",
+                                          height: "100%",
+                                          objectFit: "cover",
                                         }}
-                                      >
-                                        Admin
+                                      />
+                                    ) : (
+                                      <span style={{ fontWeight: 700 }}>
+                                        {(m.displayName || "?")[0]}
                                       </span>
-                                    ) : null}
+                                    )}
                                   </div>
 
-                                  {(() => {
-                                    const isCurrentUserAdmin =
-                                      teamDetails?.creatorId ===
-                                        currentUserId ||
-                                      (Array.isArray(teamDetails?.members) &&
-                                        teamDetails.members.some(
-                                          (mm: any) =>
-                                            (mm.userId === currentUserId ||
-                                              mm.user?.user_id ===
-                                                currentUserId) &&
-                                            mm.isAdmin
-                                        ));
+                                  <div
+                                    style={{
+                                      flex: 1,
+                                      minWidth: 0,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 600 }}>
+                                        {m.displayName}
+                                      </span>
 
-                                    const showMenu = isCurrentUserAdmin;
-
-                                    return showMenu ? (
-                                      <div style={{ position: "relative" }}>
-                                        <button
-                                          onClick={() =>
-                                            setOpenMemberMenuId((prev) =>
-                                              prev === m.id ? null : m.id
-                                            )
-                                          }
+                                      {m.isAdmin ? (
+                                        <span
                                           style={{
-                                            border: "none",
-                                            background: "transparent",
-                                            cursor: "pointer",
-                                            visibility:
-                                              hoveredMemberId === m.id ||
-                                              openMemberMenuId === m.id ||
-                                              (isMobile || isTablet)
-                                                ? "visible"
-                                                : "hidden",
+                                            background: "#e0e7ff",
+                                            color: "#1d4ed8",
+                                            fontSize: 12,
+                                            borderRadius: 9999,
+                                            padding: "2px 8px",
+                                            fontWeight: 700,
                                           }}
                                         >
-                                          ⋮
-                                        </button>
+                                          Admin
+                                        </span>
+                                      ) : null}
+                                    </div>
 
-                                        {openMemberMenuId === m.id && (
-                                          <div
+                                    {(() => {
+                                      const isCurrentUserAdmin =
+                                        teamDetails?.creatorId === currentUserId ||
+                                        (Array.isArray(teamDetails?.members) &&
+                                          teamDetails.members.some(
+                                            (mm: any) =>
+                                              (mm.userId === currentUserId ||
+                                                mm.user?.user_id === currentUserId) &&
+                                              mm.isAdmin
+                                          ));
+
+                                      const showMenu = isCurrentUserAdmin;
+
+                                      return showMenu ? (
+                                        <div style={{ position: "relative" }}>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setOpenMemberMenuId((prev) =>
+                                                prev === m.id ? null : m.id
+                                              );
+                                            }}
                                             style={{
-                                              position: "absolute",
-                                              right: 0,
-                                              top: 24,
-                                              background: "#fff",
-                                              border: "1px solid #eee",
-                                              borderRadius: 6,
-                                              boxShadow:
-                                                "0 8px 20px rgba(0,0,0,0.08)",
-                                              minWidth: 160,
-                                              zIndex: 30,
+                                              border: "none",
+                                              background: "transparent",
+                                              cursor: "pointer",
+                                              visibility:
+                                                hoveredMemberId === m.id ||
+                                                openMemberMenuId === m.id ||
+                                                (isMobile || isTablet)
+                                                  ? "visible"
+                                                  : "hidden",
                                             }}
                                           >
-                                            {!m.isAdmin && (
-                                              <button
-                                                disabled={
-                                                  memberActionLoading ===
-                                                  "admin:" + m.id
-                                                }
-                                                onClick={async () => {
-                                                  try {
-                                                    setMemberActionLoading(
-                                                      "admin:" + m.id
-                                                    );
+                                            ⋮
+                                          </button>
 
-                                                    await apiService.makeMemberAdmin(
-                                                      selectedTeamId as string,
-                                                      m.id
-                                                    );
-
-                                                    setTeamDetails(
-                                                      (prev: any) => ({
-                                                        ...prev,
-                                                        members:
-                                                          prev.members.map(
-                                                            (mm: any) =>
-                                                              mm.id === m.id
-                                                                ? {
-                                                                    ...mm,
-                                                                    isAdmin:
-                                                                      true,
-                                                                  }
-                                                                : mm
-                                                          ),
-                                                      })
-                                                    );
-
-                                                    setOpenMemberMenuId(null);
-                                                  } catch (err: any) {
-                                                    const msg =
-                                                      (err as any)?.message ||
-                                                      "";
-
-                                                    if (
-                                                      msg.includes(
-                                                        "Member not found"
-                                                      )
-                                                    ) {
-                                                      // Try with userId directly
-
-                                                      const tryUserId =
-                                                        m.userId ||
-                                                        m.user?.user_id;
-
-                                                      if (tryUserId) {
-                                                        try {
-                                                          await apiService.makeMemberAdmin(
-                                                            selectedTeamId as string,
-                                                            tryUserId
-                                                          );
-
-                                                          setTeamDetails(
-                                                            (prev: any) => ({
-                                                              ...prev,
-                                                              members:
-                                                                prev.members.map(
-                                                                  (mm: any) =>
-                                                                    mm.id ===
-                                                                    m.id
-                                                                      ? {
-                                                                          ...mm,
-                                                                          isAdmin:
-                                                                            true,
-                                                                        }
-                                                                      : mm
-                                                                ),
-                                                            })
-                                                          );
-
-                                                          setOpenMemberMenuId(
-                                                            null
-                                                          );
-
-                                                          setMemberActionLoading(
-                                                            null
-                                                          );
-
-                                                          return;
-                                                        } catch {}
-                                                      }
-
-                                                      const resolvedId =
-                                                        await resolveTeamMemberId(
-                                                          selectedTeamId as string,
-                                                          m
-                                                        );
-
-                                                      if (resolvedId) {
-                                                        try {
-                                                          await apiService.makeMemberAdmin(
-                                                            selectedTeamId as string,
-                                                            resolvedId
-                                                          );
-
-                                                          setTeamDetails(
-                                                            (prev: any) => ({
-                                                              ...prev,
-                                                              members:
-                                                                prev.members.map(
-                                                                  (mm: any) =>
-                                                                    mm.id ===
-                                                                    m.id
-                                                                      ? {
-                                                                          ...mm,
-                                                                          isAdmin:
-                                                                            true,
-                                                                          id: resolvedId,
-                                                                        }
-                                                                      : mm
-                                                                ),
-                                                            })
-                                                          );
-
-                                                          setOpenMemberMenuId(
-                                                            null
-                                                          );
-                                                        } catch (e2: any) {
-                                                          setError(
-                                                            e2?.message ||
-                                                              "Failed to make admin"
-                                                          );
-                                                        }
-                                                      } else {
-                                                        setError(
-                                                          "Member not found in team"
-                                                        );
-                                                      }
-                                                    } else {
-                                                      setError(
-                                                        msg ||
-                                                          "Failed to make admin"
-                                                      );
-                                                    }
-                                                  } finally {
-                                                    setMemberActionLoading(
-                                                      null
-                                                    );
-                                                  }
-                                                }}
-                                                style={{
-                                                  display: "block",
-                                                  width: "100%",
-                                                  textAlign: "left",
-                                                  padding: "8px 10px",
-                                                  border: "none",
-                                                  background: "#fff",
-                                                  cursor: "pointer",
-                                                }}
-                                              >
-                                                Make admin
-                                              </button>
-                                            )}
-
-                                            {m.isAdmin && (
-                                              <button
-                                                disabled={
-                                                  memberActionLoading ===
-                                                  "dismiss:" + m.id
-                                                }
-                                                onClick={async () => {
-                                                  try {
-                                                    setMemberActionLoading(
-                                                      "dismiss:" + m.id
-                                                    );
-
-                                                    await apiService.updateMemberAdmin(
-                                                      selectedTeamId as string,
-                                                      m.id,
-                                                      false
-                                                    );
-
-                                                    setTeamDetails(
-                                                      (prev: any) => ({
-                                                        ...prev,
-                                                        members:
-                                                          prev.members.map(
-                                                            (mm: any) =>
-                                                              mm.id === m.id
-                                                                ? {
-                                                                    ...mm,
-                                                                    isAdmin:
-                                                                      false,
-                                                                  }
-                                                                : mm
-                                                          ),
-                                                      })
-                                                    );
-
-                                                    setOpenMemberMenuId(null);
-                                                  } catch (err: any) {
-                                                    const msg =
-                                                      (err as any)?.message ||
-                                                      "";
-
-                                                    if (
-                                                      msg.includes(
-                                                        "Member not found"
-                                                      )
-                                                    ) {
-                                                      const tryUserId =
-                                                        m.userId ||
-                                                        m.user?.user_id;
-
-                                                      if (tryUserId) {
-                                                        try {
-                                                          await apiService.updateMemberAdmin(
-                                                            selectedTeamId as string,
-                                                            tryUserId,
-                                                            false
-                                                          );
-                                                          setTeamDetails(
-                                                            (prev: any) => ({
-                                                              ...prev,
-                                                              members:
-                                                                prev.members.map(
-                                                                  (mm: any) =>
-                                                                    mm.id ===
-                                                                    m.id
-                                                                      ? {
-                                                                          ...mm,
-                                                                          isAdmin:
-                                                                            false,
-                                                                        }
-                                                                      : mm
-                                                                ),
-                                                            })
-                                                          );
-                                                          setOpenMemberMenuId(
-                                                            null
-                                                          );
-                                                          setMemberActionLoading(
-                                                            null
-                                                          );
-                                                          return;
-                                                        } catch {}
-                                                      }
-
-                                                      const resolvedId =
-                                                        await resolveTeamMemberId(
-                                                          selectedTeamId as string,
-                                                          m
-                                                        );
-
-                                                      if (resolvedId) {
-                                                        try {
-                                                          await apiService.updateMemberAdmin(
-                                                            selectedTeamId as string,
-                                                            resolvedId,
-                                                            false
-                                                          );
-                                                          setTeamDetails(
-                                                            (prev: any) => ({
-                                                              ...prev,
-                                                              members:
-                                                                prev.members.map(
-                                                                  (mm: any) =>
-                                                                    mm.id ===
-                                                                    m.id
-                                                                      ? {
-                                                                          ...mm,
-                                                                          isAdmin:
-                                                                            false,
-                                                                          id: resolvedId,
-                                                                        }
-                                                                      : mm
-                                                                ),
-                                                            })
-                                                          );
-                                                          setOpenMemberMenuId(
-                                                            null
-                                                          );
-                                                        } catch (e2: any) {
-                                                          setError(
-                                                            e2?.message ||
-                                                              "Failed to dismiss admin"
-                                                          );
-                                                        }
-                                                      } else {
-                                                        setError(
-                                                          "Member not found in team"
-                                                        );
-                                                      }
-                                                    } else {
-                                                      setError(
-                                                        msg ||
-                                                          "Failed to dismiss admin"
-                                                      );
-                                                    }
-                                                  } finally {
-                                                    setMemberActionLoading(
-                                                      null
-                                                    );
-                                                  }
-                                                }}
-                                                style={{
-                                                  display: "block",
-                                                  width: "100%",
-                                                  textAlign: "left",
-                                                  padding: "8px 10px",
-                                                  border: "none",
-                                                  background: "#fff",
-                                                  cursor: "pointer",
-                                                }}
-                                              >
-                                                Dismiss as admin
-                                              </button>
-                                            )}
-
-                                            <button
-                                              disabled={
-                                                memberActionLoading ===
-                                                "remove:" + m.id
-                                              }
-                                              onClick={async () => {
-                                                try {
-                                                  setMemberActionLoading(
-                                                    "remove:" + m.id
-                                                  );
-
-                                                  await apiService.removeMemberFromTeam(
-                                                    selectedTeamId as string,
-                                                    m.id
-                                                  );
-
-                                                  setTeamDetails(
-                                                    (prev: any) => ({
-                                                      ...prev,
-                                                      members:
-                                                        prev.members.filter(
-                                                          (mm: any) =>
-                                                            mm.id !== m.id
-                                                        ),
-                                                    })
-                                                  );
-
-                                                  setOpenMemberMenuId(null);
-                                                } catch (err: any) {
-                                                  const msg =
-                                                    (err as any)?.message || "";
-
-                                                  if (
-                                                    msg.includes(
-                                                      "Member not found"
-                                                    )
-                                                  ) {
-                                                    // Try with userId directly
-
-                                                    const tryUserId =
-                                                      m.userId ||
-                                                      m.user?.user_id;
-
-                                                    if (tryUserId) {
-                                                      try {
-                                                        await apiService.removeMemberFromTeam(
-                                                          selectedTeamId as string,
-                                                          tryUserId
-                                                        );
-
-                                                        setTeamDetails(
-                                                          (prev: any) => ({
-                                                            ...prev,
-                                                            members:
-                                                              prev.members.filter(
-                                                                (mm: any) =>
-                                                                  mm.id !== m.id
-                                                              ),
-                                                          })
-                                                        );
-
-                                                        setOpenMemberMenuId(
-                                                          null
-                                                        );
-
-                                                        setMemberActionLoading(
-                                                          null
-                                                        );
-
-                                                        return;
-                                                      } catch {}
-                                                    }
-
-                                                    const resolvedId =
-                                                      await resolveTeamMemberId(
-                                                        selectedTeamId as string,
-                                                        m
-                                                      );
-
-                                                    if (resolvedId) {
-                                                      try {
-                                                        await apiService.removeMemberFromTeam(
-                                                          selectedTeamId as string,
-                                                          resolvedId
-                                                        );
-
-                                                        setTeamDetails(
-                                                          (prev: any) => ({
-                                                            ...prev,
-                                                            members:
-                                                              prev.members.filter(
-                                                                (mm: any) =>
-                                                                  mm.id !==
-                                                                    m.id &&
-                                                                  mm.id !==
-                                                                    resolvedId
-                                                              ),
-                                                          })
-                                                        );
-
-                                                        setOpenMemberMenuId(
-                                                          null
-                                                        );
-                                                      } catch (e2: any) {
-                                                        setError(
-                                                          e2?.message ||
-                                                            "Failed to remove member"
-                                                        );
-                                                      }
-                                                    } else {
-                                                      setError(
-                                                        "Member not found in team"
-                                                      );
-                                                    }
-                                                  } else {
-                                                    setError(
-                                                      msg ||
-                                                        "Failed to remove member"
-                                                    );
-                                                  }
-                                                } finally {
-                                                  setMemberActionLoading(null);
-                                                }
-                                              }}
+                                          {openMemberMenuId === m.id && (
+                                            <div
+                                              onClick={(e) => e.stopPropagation()}
                                               style={{
-                                                display: "block",
-                                                width: "100%",
-                                                textAlign: "left",
-                                                padding: "8px 10px",
-                                                border: "none",
+                                                position: "absolute",
+                                                right: 0,
+                                                top: 24,
                                                 background: "#fff",
-                                                cursor: "pointer",
-                                                color: "#b91c1c",
+                                                border: "1px solid #eee",
+                                                borderRadius: 6,
+                                                boxShadow:
+                                                  "0 8px 20px rgba(0,0,0,0.08)",
+                                                minWidth: 160,
+                                                zIndex: 80,
                                               }}
                                             >
-                                              Remove from group
-                                            </button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : null;
-                                  })()}
-                                </div>
-                              </li>
-                            ))}
-                        </ul>
-                      ) : (
-                        <div style={{ color: "#6b7280" }}>
-                          No members to show.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                                              {m.isAdmin ? (
+                                                <button
+                                                  disabled={
+                                                    memberActionLoading ===
+                                                    "dismiss:" + m.id
+                                                  }
+                                                  onClick={async () => {
+                                                    try {
+                                                      setMemberActionLoading(
+                                                        "dismiss:" + m.id
+                                                      );
+
+                                                      await apiService.updateMemberAdmin(
+                                                        selectedTeamId as string,
+                                                        m.id,
+                                                        false
+                                                      );
+
+                                                      setTeamDetails((prev: any) => ({
+                                                        ...prev,
+                                                        members: prev.members.map(
+                                                          (mm: any) =>
+                                                            mm.id === m.id
+                                                              ? { ...mm, isAdmin: false }
+                                                              : mm
+                                                        ),
+                                                      }));
+
+                                                      setOpenMemberMenuId(null);
+                                                    } catch (err: any) {
+                                                      setError(
+                                                        err?.message ||
+                                                          "Failed to dismiss admin"
+                                                      );
+                                                    } finally {
+                                                      setMemberActionLoading(null);
+                                                    }
+                                                  }}
+                                                  style={{
+                                                    display: "block",
+                                                    width: "100%",
+                                                    textAlign: "left",
+                                                    padding: "8px 10px",
+                                                    border: "none",
+                                                    background: "#fff",
+                                                    cursor: "pointer",
+                                                    color: "#b45309",
+                                                  }}
+                                                >
+                                                  Dismiss admin
+                                                </button>
+                                              ) : (
+                                                <>
+                                                  <button
+                                                    disabled={
+                                                      memberActionLoading ===
+                                                      "admin:" + m.id
+                                                    }
+                                                    onClick={async () => {
+                                                      try {
+                                                        setMemberActionLoading(
+                                                          "admin:" + m.id
+                                                        );
+
+                                                        await apiService.makeMemberAdmin(
+                                                          selectedTeamId as string,
+                                                          m.id
+                                                        );
+
+                                                        setTeamDetails((prev: any) => ({
+                                                          ...prev,
+                                                          members: prev.members.map(
+                                                            (mm: any) =>
+                                                              mm.id === m.id
+                                                                ? { ...mm, isAdmin: true }
+                                                                : mm
+                                                          ),
+                                                        }));
+
+                                                        setOpenMemberMenuId(null);
+                                                      } catch (err: any) {
+                                                        setError(
+                                                          err?.message ||
+                                                            "Failed to make admin"
+                                                        );
+                                                      } finally {
+                                                        setMemberActionLoading(null);
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      display: "block",
+                                                      width: "100%",
+                                                      textAlign: "left",
+                                                      padding: "8px 10px",
+                                                      border: "none",
+                                                      background: "#fff",
+                                                      cursor: "pointer",
+                                                    }}
+                                                  >
+                                                    Make admin
+                                                  </button>
+
+                                                  <button
+                                                    disabled={
+                                                      memberActionLoading ===
+                                                      "remove:" + m.id
+                                                    }
+                                                    onClick={async () => {
+                                                      try {
+                                                        setMemberActionLoading(
+                                                          "remove:" + m.id
+                                                        );
+
+                                                        await apiService.removeMemberFromTeam(
+                                                          selectedTeamId as string,
+                                                          m.id
+                                                        );
+
+                                                        setTeamDetails((prev: any) => ({
+                                                          ...prev,
+                                                          members: prev.members.filter(
+                                                            (mm: any) => mm.id !== m.id
+                                                          ),
+                                                        }));
+
+                                                        setOpenMemberMenuId(null);
+                                                      } catch (err: any) {
+                                                        setError(
+                                                          err?.message ||
+                                                            "Failed to remove member"
+                                                        );
+                                                      } finally {
+                                                        setMemberActionLoading(null);
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      display: "block",
+                                                      width: "100%",
+                                                      textAlign: "left",
+                                                      padding: "8px 10px",
+                                                      border: "none",
+                                                      background: "#fff",
+                                                      cursor: "pointer",
+                                                      color: "#b91c1c",
+                                                    }}
+                                                  >
+                                                    Remove from group
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                </li>
+                              ))}
+                          </ul>
+                        ) : (
+                          <div style={{ color: "#6b7280" }}>No members to show.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </>
         ))}
 
       {/* Create Team Modal */}
