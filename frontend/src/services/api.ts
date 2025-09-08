@@ -611,12 +611,32 @@ class ApiService {
   // Make a team member an admin
   async makeMemberAdmin(teamId: string, memberId: string): Promise<ApiResponse> {
     try {
-      const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}/members/${memberId}/admin`, {
+      const response = await this.requestWithAuth<ApiResponse>(`/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}/admin`, {
         method: 'PUT'
       });
       return response;
     } catch (error) {
       console.error('Error making member admin:', error);
+      throw error;
+    }
+  }
+
+  // Update member admin status (true to make admin, false to dismiss)
+  async updateMemberAdmin(teamId: string, memberId: string, isAdmin: boolean): Promise<ApiResponse> {
+    try {
+      if (isAdmin) {
+        // Promote: PUT without body
+        return await this.requestWithAuth<ApiResponse>(`/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}/admin`, {
+          method: 'PUT'
+        });
+      } else {
+        // Demote: DELETE
+        return await this.requestWithAuth<ApiResponse>(`/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}/admin`, {
+          method: 'DELETE'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating member admin:', error);
       throw error;
     }
   }

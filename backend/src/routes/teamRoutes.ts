@@ -158,6 +158,7 @@ router.get('/:teamId/members', validateRequest(teamIdParamSchema), TeamControlle
 
 // Member management endpoints
 router.put('/:teamId/members/:memberId/admin', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.makeMemberAdmin);
+router.delete('/:teamId/members/:memberId/admin', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.removeMemberAdmin);
 router.delete('/:teamId/members/:memberId', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.removeMemberFromTeam);
 
 // Team messaging endpoints

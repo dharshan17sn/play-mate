@@ -52,6 +52,39 @@ export interface TeamWithMembers {
 
 export class TeamService {
   /**
+   * Resolve a team member by identifier which can be either the user's user_id or the teamMember.id
+   */
+  private static async resolveTeamMember(teamId: string, memberIdentifier: string) {
+    // Try composite key (user_id + teamId)
+    const byComposite = await prisma.teamMember.findUnique({
+      where: {
+        userId_teamId: {
+          userId: memberIdentifier,
+          teamId
+        }
+      },
+      include: {
+        user: {
+          select: { user_id: true, displayName: true, photo: true }
+        }
+      }
+    });
+
+    if (byComposite) return byComposite;
+
+    // Fallback: consider memberIdentifier is the teamMember primary id
+    const byMemberId = await prisma.teamMember.findFirst({
+      where: { id: memberIdentifier, teamId },
+      include: {
+        user: {
+          select: { user_id: true, displayName: true, photo: true }
+        }
+      }
+    });
+
+    return byMemberId;
+  }
+  /**
    * Create a new team
    */
   static async createTeam(data: CreateTeamData) {
@@ -528,6 +561,7 @@ export class TeamService {
    */
   static async makeMemberAdmin(teamId: string, memberId: string, requesterId: string) {
     try {
+      logger.info(`makeMemberAdmin called with teamId=${teamId}, memberId=${memberId}, requesterId=${requesterId}`);
       // First, verify the requester is an admin of the team
       const requesterMembership = await prisma.teamMember.findFirst({
         where: {
@@ -541,16 +575,16 @@ export class TeamService {
         throw new ForbiddenError('Only team admins can promote members to admin');
       }
 
-      // Check if the member exists in the team
-      const member = await prisma.teamMember.findFirst({
-        where: {
-          teamId,
-          userId: memberId
-        }
-      });
+      // Check if the member exists in the team (accept user_id or teamMember.id)
+      const member = await this.resolveTeamMember(teamId, memberId);
 
       if (!member) {
-        throw new NotFoundError('Member not found in team');
+        // Check if user exists for clearer error
+        const userExists = await prisma.user.findUnique({ where: { user_id: memberId }, select: { user_id: true } });
+        if (!userExists) {
+          throw new NotFoundError('User not found');
+        }
+        throw new NotFoundError('User is not a member of this team');
       }
 
       if (member.isAdmin) {
@@ -559,9 +593,7 @@ export class TeamService {
 
       // Update the member to be an admin
       const updatedMember = await prisma.teamMember.update({
-        where: {
-          id: member.id
-        },
+        where: { id: member.id },
         data: {
           isAdmin: true
         },
@@ -594,6 +626,96 @@ export class TeamService {
   }
 
   /**
+   * Demote an admin to regular member
+   */
+  static async removeMemberAdmin(teamId: string, memberId: string, requesterId: string) {
+    try {
+      logger.info(`removeMemberAdmin called with teamId=${teamId}, memberId=${memberId}, requesterId=${requesterId}`);
+      // Get team for creator check
+      const team = await prisma.team.findUnique({ where: { id: teamId }, select: { creatorId: true } });
+
+      // Immediately forbid demoting the team creator, regardless of teamMember row state
+      if (team && memberId === team.creatorId) {
+        throw new ForbiddenError('Cannot demote the team creator');
+      }
+
+      // Verify the requester is creator or an admin of the team
+      const requesterIsCreator = !!team && team.creatorId === requesterId;
+      const requesterMembership = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: requesterId,
+            teamId
+          }
+        },
+        select: { isAdmin: true }
+      });
+
+      const requesterIsAdmin = requesterMembership?.isAdmin === true;
+      if (!requesterIsCreator && !requesterIsAdmin) {
+        throw new ForbiddenError('Only team creator or admins can demote admins');
+      }
+
+      // Check if the member exists in the team (accept user_id or teamMember.id)
+      const member = await this.resolveTeamMember(teamId, memberId);
+
+      if (!member) {
+        // Check if user exists for clearer error
+        const userExists = await prisma.user.findUnique({ where: { user_id: memberId }, select: { user_id: true } });
+        if (!userExists) {
+          throw new NotFoundError('User not found');
+        }
+        throw new NotFoundError('User is not a member of this team');
+      }
+
+      // If the member is not an admin, nothing to demote
+      if (!member.isAdmin) {
+        throw new ConflictError('Member is not an admin');
+      }
+
+      // Prevent demoting the team creator
+      if (team && team.creatorId === member.userId) {
+        throw new ForbiddenError('Cannot demote the team creator');
+      }
+
+      // Prevent admins from demoting themselves (creator can still demote self if needed)
+      if (!requesterIsCreator && member.userId === requesterId) {
+        throw new ForbiddenError('Admins cannot demote themselves');
+      }
+
+      // Update the member to remove admin
+      const updatedMember = await prisma.teamMember.update({
+        where: { id: member.id },
+        data: { isAdmin: false },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              displayName: true,
+              photo: true
+            }
+          }
+        }
+      });
+
+      logger.info(`Member ${memberId} demoted from admin in team ${teamId} by ${requesterId}`);
+
+      return {
+        id: updatedMember.id,
+        userId: updatedMember.userId,
+        displayName: updatedMember.user.displayName,
+        photo: updatedMember.user.photo,
+        status: updatedMember.status,
+        joinedAt: updatedMember.joinedAt,
+        isAdmin: updatedMember.isAdmin
+      };
+    } catch (error) {
+      logger.error(`Error demoting admin ${memberId} in team ${teamId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove a member from team
    */
   static async removeMemberFromTeam(teamId: string, memberId: string, requesterId: string) {
@@ -611,23 +733,26 @@ export class TeamService {
         throw new ForbiddenError('Only team admins can remove members from team');
       }
 
-      // Check if the member exists in the team
-      const member = await prisma.teamMember.findFirst({
-        where: {
-          teamId,
-          userId: memberId
-        },
-        include: {
-          user: {
-            select: {
-              displayName: true
-            }
-          }
-        }
-      });
+      // Check if the member exists in the team (accept user_id or teamMember.id)
+      const member = await this.resolveTeamMember(teamId, memberId);
 
       if (!member) {
-        throw new NotFoundError('Member not found in team');
+        // More specific errors
+        const userExists = await prisma.user.findUnique({ where: { user_id: memberId }, select: { user_id: true } });
+        if (!userExists) {
+          throw new NotFoundError('User not found');
+        }
+        throw new NotFoundError('User is not a member of this team');
+      }
+
+      // Prevent removing the team creator
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { creatorId: true }
+      });
+
+      if (team && member.userId === team.creatorId) {
+        throw new ForbiddenError('Cannot remove the team creator');
       }
 
       // Prevent admins from removing themselves

@@ -218,6 +218,30 @@ export class TeamController {
   });
 
   /**
+   * Demote a team admin to regular member
+   */
+  static removeMemberAdmin = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    const { teamId, memberId } = req.params;
+    if (!teamId || !memberId) {
+      return res.status(400).json(
+        ResponseBuilder.validationError('Team ID and Member ID are required')
+      );
+    }
+
+    const result = await TeamService.removeMemberAdmin(teamId, memberId, req.user.user_id);
+
+    res.status(200).json(
+      ResponseBuilder.success(result, 'Admin removed from member successfully')
+    );
+  });
+
+  /**
    * Remove a member from team
    */
   static removeMemberFromTeam = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
