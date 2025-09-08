@@ -1717,6 +1717,9 @@ export default function ChatPage() {
                   flexDirection: "column",
                   gap: 16,
                 }}
+                onClick={() => {
+                  if (openMemberMenuId) setOpenMemberMenuId(null);
+                }}
               >
                 <div
                   style={{
@@ -2036,11 +2039,12 @@ export default function ChatPage() {
                               return showMenu ? (
                                 <div style={{ position: "relative" }}>
                                   <button
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setOpenMemberMenuId((prev) =>
                                         prev === m.id ? null : m.id
-                                      )
-                                    }
+                                      );
+                                    }}
                                     style={{
                                       border: "none",
                                       background: "transparent",
@@ -2058,6 +2062,7 @@ export default function ChatPage() {
 
                                   {openMemberMenuId === m.id && (
                                     <div
+                                      onClick={(e) => e.stopPropagation()}
                                       style={{
                                         position: "absolute",
                                         right: 0,
