@@ -428,8 +428,55 @@ export class UserService {
    */
   static async deleteUser(user_id: string) {
     try {
-      await prisma.user.delete({
-        where: { user_id },
+      await prisma.$transaction(async (tx) => {
+        // Delete chat-related data
+        await tx.chatMessage.deleteMany({ where: { senderId: user_id } });
+        await tx.chat.deleteMany({ where: { OR: [{ userAId: user_id }, { userBId: user_id }] } });
+
+        // Delete team messages and generic messages sent by the user
+        await tx.teamMessage.deleteMany({ where: { senderId: user_id } });
+        await tx.message.deleteMany({ where: { senderId: user_id } });
+
+        // Remove team memberships and invitations for the user
+        await tx.teamMember.deleteMany({ where: { userId: user_id } });
+        await tx.invitation.deleteMany({ where: { OR: [{ fromUserId: user_id }, { toUserId: user_id }] } });
+
+        // Remove friendships and friend requests
+        await tx.friendRequest.deleteMany({ where: { OR: [{ fromUserId: user_id }, { toUserId: user_id }] } });
+        await tx.friend.deleteMany({ where: { OR: [{ userAId: user_id }, { userBId: user_id }] } });
+
+        // Remove preferred games
+        await tx.userGame.deleteMany({ where: { userId: user_id } });
+
+        // Delete tournaments created by the user and their dependents
+        const tournaments = await tx.tournament.findMany({
+          where: { creatorId: user_id },
+          select: { id: true },
+        });
+        const tournamentIds = tournaments.map((t) => t.id);
+        if (tournamentIds.length > 0) {
+          await tx.tournamentTeam.deleteMany({ where: { tournamentId: { in: tournamentIds } } });
+          await tx.message.deleteMany({ where: { tournamentId: { in: tournamentIds } } });
+          await tx.tournament.deleteMany({ where: { id: { in: tournamentIds } } });
+        }
+
+        // Delete teams created by the user and their dependents
+        const teams = await tx.team.findMany({
+          where: { creatorId: user_id },
+          select: { id: true },
+        });
+        const teamIds = teams.map((t) => t.id);
+        if (teamIds.length > 0) {
+          await tx.teamMember.deleteMany({ where: { teamId: { in: teamIds } } });
+          await tx.invitation.deleteMany({ where: { teamId: { in: teamIds } } });
+          await tx.teamMessage.deleteMany({ where: { teamId: { in: teamIds } } });
+          await tx.message.deleteMany({ where: { teamId: { in: teamIds } } });
+          await tx.tournamentTeam.deleteMany({ where: { teamId: { in: teamIds } } });
+          await tx.team.deleteMany({ where: { id: { in: teamIds } } });
+        }
+
+        // Finally, delete the user
+        await tx.user.delete({ where: { user_id } });
       });
 
       logger.info(`User deleted: ${user_id}`);
