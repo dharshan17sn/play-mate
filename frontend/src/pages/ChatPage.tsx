@@ -1747,9 +1747,80 @@ export default function ChatPage() {
                   )}
                 </div>
 
-                <div style={{ fontWeight: 800, fontSize: 20 }}>
-                  {teamDetails.title}
-                </div>
+                {(() => {
+                  const isAdmin =
+                    teamDetails?.creatorId === currentUserId ||
+                    (Array.isArray(teamDetails?.members) &&
+                      teamDetails.members.some(
+                        (m: any) =>
+                          (m.userId === currentUserId || m.user?.user_id === currentUserId) &&
+                          m.isAdmin
+                      ));
+
+                  return (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {isEditingTeamTitle ? (
+                        <input
+                          value={editTeamTitle}
+                          onChange={(e) => setEditTeamTitle(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter" && selectedTeamId) {
+                              const newTitle = editTeamTitle.trim();
+
+                              try {
+                                await apiService.updateTeam(selectedTeamId, { title: newTitle });
+
+                                setTeamDetails((prev: any) => ({
+                                  ...prev,
+                                  title: newTitle,
+                                }));
+
+                                setTeams((prev) =>
+                                  prev.map((t) => (t.id === selectedTeamId ? { ...t, title: newTitle } : t))
+                                );
+
+                                setIsEditingTeamTitle(false);
+                              } catch (err: any) {
+                                setError(err?.message || "Failed to update title");
+                              }
+                            } else if (e.key === "Escape") {
+                              setIsEditingTeamTitle(false);
+                            }
+                          }}
+                          autoFocus
+                          style={{
+                            fontWeight: 800,
+                            fontSize: 20,
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 6,
+                            padding: "4px 8px",
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 800, fontSize: 20 }}>{teamDetails.title}</div>
+                      )}
+
+                      {isAdmin && !isEditingTeamTitle && (
+                        <button
+                          title="Edit title"
+                          onClick={() => {
+                            setEditTeamTitle(teamDetails.title || "");
+                            setIsEditingTeamTitle(true);
+                          }}
+                          style={{ border: "none", background: "transparent", cursor: "pointer" }}
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div style={{ color: "#374151" }}>
                   {teamDetails.gameName || teamDetails.game?.name || "—"}
@@ -1762,9 +1833,82 @@ export default function ChatPage() {
                     : "—"}
                 </div>
 
-                <div style={{ color: "#374151" }}>
-                  {teamDetails.description || "Add description"}
-                </div>
+                {(() => {
+                  const isAdmin =
+                    teamDetails?.creatorId === currentUserId ||
+                    (Array.isArray(teamDetails?.members) &&
+                      teamDetails.members.some(
+                        (m: any) =>
+                          (m.userId === currentUserId || m.user?.user_id === currentUserId) &&
+                          m.isAdmin
+                      ));
+
+                  return (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {isEditingTeamDescription ? (
+                        <input
+                          value={editTeamDescription}
+                          onChange={(e) => setEditTeamDescription(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter" && selectedTeamId) {
+                              const newDesc = editTeamDescription.trim();
+
+                              try {
+                                await apiService.updateTeam(selectedTeamId, { description: newDesc });
+
+                                setTeamDetails((prev: any) => ({
+                                  ...prev,
+                                  description: newDesc,
+                                }));
+
+                                setTeams((prev) =>
+                                  prev.map((t) => (t.id === selectedTeamId ? { ...t, description: newDesc } : t))
+                                );
+
+                                setIsEditingTeamDescription(false);
+                              } catch (err: any) {
+                                setError(err?.message || "Failed to update description");
+                              }
+                            } else if (e.key === "Escape") {
+                              setIsEditingTeamDescription(false);
+                            }
+                          }}
+                          autoFocus
+                          placeholder="Add description"
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 6,
+                            padding: "6px 8px",
+                            width: "100%",
+                          }}
+                        />
+                      ) : (
+                        <div style={{ color: "#374151" }}>
+                          {teamDetails.description || "Add description"}
+                        </div>
+                      )}
+
+                      {isAdmin && !isEditingTeamDescription && (
+                        <button
+                          title="Edit description"
+                          onClick={() => {
+                            setEditTeamDescription(teamDetails.description || "");
+                            setIsEditingTeamDescription(true);
+                          }}
+                          style={{ border: "none", background: "transparent", cursor: "pointer" }}
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div style={{ marginTop: 8, fontWeight: 700 }}>Members</div>
 
