@@ -51,6 +51,8 @@ const TournamentDetailsPage: React.FC = () => {
   const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
   const [teamMembersById, setTeamMembersById] = useState<Record<string, any[]>>({});
   const [pendingRequestedTeamIds, setPendingRequestedTeamIds] = useState<Set<string>>(new Set());
+  const [isCreatingIndividual, setIsCreatingIndividual] = useState(false);
+  const [soloTeamTitle, setSoloTeamTitle] = useState('');
 
   // Safely derive team member count across different API shapes
   const getTeamMemberCount = (team: any): number => {
@@ -252,6 +254,44 @@ const TournamentDetailsPage: React.FC = () => {
       loadTournament();
     } catch (err: any) {
       setError(err.message || 'Failed to register team as pending');
+    }
+  };
+
+  const handleIndividualRegistration = async () => {
+    if (!tournamentId || !tournament) return;
+    const requiredPlayers = tournament.noOfPlayersPerTeam || 1;
+    try {
+      setIsCreatingIndividual(true);
+      const soloTitle = soloTeamTitle?.trim() || 'My Solo Team';
+      const gameName = (tournament as any).gameId || (tournament as any).game?.name;
+      if (!gameName) {
+        setError('Tournament game is unavailable for individual registration');
+        setIsCreatingIndividual(false);
+        return;
+      }
+      const created = await apiService.createTeam({
+        title: soloTitle,
+        gameName,
+        // Keep it discoverable so others can request to join
+        isPublic: true,
+        description: 'Auto-created for tournament registration'
+      });
+      const createdData: any = (created as any)?.data ?? created;
+      const newTeamId: string = createdData?.id || createdData?.team?.id;
+      if (!newTeamId) {
+        throw new Error('Failed to create solo team');
+      }
+      // Register the solo team to this tournament so it appears under Pending teams
+      await apiService.registerTeamForTournament(tournamentId, newTeamId);
+      setShowTeamRegistrationModal(false);
+      setShowPendingConfirmation(false);
+      // Appear under Pending until team reaches required size (>1), else Completed
+      setActiveTab(requiredPlayers > 1 ? 'pending' : 'completed');
+      loadTournament();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to register as individual');
+    } finally {
+      setIsCreatingIndividual(false);
     }
   };
 
@@ -733,26 +773,32 @@ const TournamentDetailsPage: React.FC = () => {
               {/* Individual Registration */}
               {registrationType === 'individual' ? (
                 <div className="text-center py-8">
-                  <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Individual Registration</h4>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p className="text-yellow-800 text-sm">
-                      <strong>Coming Soon!</strong> Individual registration is not yet available. Please create a team or join an existing team to register for this tournament.
-                    </p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    We’ll create a solo team (you as admin) and register it. If the tournament requires more than one player per team, your team will show under Pending until enough members join; once it reaches the required size, it will move to Completed.
+                  </p>
+                  <div className="max-w-sm mx-auto text-left mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Team name</label>
+                    <input
+                      type="text"
+                      value={soloTeamTitle}
+                      onChange={(e) => setSoloTeamTitle(e.target.value)}
+                      placeholder="Enter your team name"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div className="space-y-3">
                     <button
-                      onClick={() => {
-                        setShowTeamRegistrationModal(false);
-                        navigate('/teams/create');
-                      }}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                      onClick={handleIndividualRegistration}
+                      disabled={isCreatingIndividual}
+                      className={`px-6 py-3 rounded-lg transition-colors text-white ${isCreatingIndividual ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                     >
-                      Create New Team
+                      {isCreatingIndividual ? 'Registering…' : 'Create Solo Team & Register'}
                     </button>
                     <p className="text-sm text-gray-500">or</p>
                     <button
@@ -793,6 +839,7 @@ const TournamentDetailsPage: React.FC = () => {
                         const hasEnoughPlayers = getTeamMemberCount(team) >= (tournament?.noOfPlayersPerTeam || 1);
                         const isAlreadyRegistered = tournament?.teams?.some(t => t.id === team.id);
                         
+                        const isAdmin = team?.creatorId === currentUserId;
                         return (
                           <div
                             key={team.id}
@@ -836,6 +883,33 @@ const TournamentDetailsPage: React.FC = () => {
                               </div>
                               
                               <div className="flex items-center space-x-2">
+                                {isAdmin && isAlreadyRegistered && (
+                                  <div className="relative">
+                                    <details className="group">
+                                      <summary className="list-none cursor-pointer p-1 rounded hover:bg-gray-200">
+                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                                        </svg>
+                                      </summary>
+                                      <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded shadow z-10">
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await apiService.unregisterTeamFromTournament(tournamentId as string, team.id);
+                                              loadTournament();
+                                            } catch (err: any) {
+                                              setError(err?.message || 'Failed to deregister team');
+                                            }
+                                          }}
+                                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                          Deregister from Tournament
+                                        </button>
+                                      </div>
+                                    </details>
+                                  </div>
+                                )}
                                 {isAlreadyRegistered ? (
                                   <span className="text-sm text-gray-500">Already registered</span>
                                 ) : (
