@@ -577,6 +577,19 @@ class ApiService {
     }
   }
 
+  // Notifications API
+  async listNotifications(): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>('/notifications');
+  }
+
+  async markNotificationsRead(): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>('/notifications/read', { method: 'PUT' });
+  }
+
+  async deleteNotification(id: string): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>(`/notifications/${id}`, { method: 'DELETE' });
+  }
+
   async sendTeamMessage(teamId: string, content: string): Promise<ApiResponse> {
     try {
       const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}/messages`, {
@@ -650,6 +663,120 @@ class ApiService {
       return response;
     } catch (error) {
       console.error('Error removing member from team:', error);
+      throw error;
+    }
+  }
+
+  // Tournament API methods
+  async createTournament(data: {
+    title: string;
+    description?: string;
+    gameId: string;
+    photo?: string;
+    startDate: string;
+    location: string;
+    noOfPlayersPerTeam?: number;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>('/tournaments', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return response;
+    } catch (error) {
+      console.error('Error creating tournament:', error);
+      throw error;
+    }
+  }
+
+  async getTournaments(params?: { page?: number; limit?: number; gameId?: string }): Promise<ApiResponse> {
+    try {
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.gameId) query.set('gameId', params.gameId);
+      const endpoint = `/tournaments${query.toString() ? `?${query.toString()}` : ''}`;
+      const response = await this.requestWithAuth<ApiResponse>(endpoint);
+      return response;
+    } catch (error) {
+      console.error('Error fetching tournaments:', error);
+      throw error;
+    }
+  }
+
+  async getTournamentById(tournamentId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}`);
+      return response;
+    } catch (error) {
+      console.error('Error getting tournament by ID:', error);
+      throw error;
+    }
+  }
+
+  async updateTournament(tournamentId: string, data: {
+    title?: string;
+    description?: string;
+    photo?: string;
+    startDate?: string;
+    location?: string;
+    noOfPlayersPerTeam?: number;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      return response;
+    } catch (error) {
+      console.error('Error updating tournament:', error);
+      throw error;
+    }
+  }
+
+  async deleteTournament(tournamentId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}`, {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error deleting tournament:', error);
+      throw error;
+    }
+  }
+
+  async registerTeamForTournament(tournamentId: string, teamId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}/register`, {
+        method: 'POST',
+        body: JSON.stringify({ teamId })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error registering team for tournament:', error);
+      throw error;
+    }
+  }
+
+  async unregisterTeamFromTournament(tournamentId: string, teamId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}/teams/${teamId}`, {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error unregistering team from tournament:', error);
+      throw error;
+    }
+  }
+
+  async getTournamentTeams(tournamentId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}/teams`);
+      return response;
+    } catch (error) {
+      console.error('Error getting tournament teams:', error);
       throw error;
     }
   }

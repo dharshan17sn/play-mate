@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService, type Game } from '../services/api';
 import { getSocket } from '../services/socket';
@@ -12,6 +12,9 @@ const DashboardPage: React.FC = () => {
     const [outgoing, setOutgoing] = useState<any[]>([]);
     const [teamJoinRequests, setTeamJoinRequests] = useState<any[]>([]);
     const [friends, setFriends] = useState<{ user_id: string; displayName: string; photo?: string }[]>([]);
+    const [systemEvents, setSystemEvents] = useState<Array<{ id: string; title: string; startDate?: string; reason?: string; createdAt: string; read?: boolean }>>([]);
+
+    // (Removed local dismissal persistence)
 
     const openNotificationPanel = () => setIsNotificationOpen(true);
     const closeNotificationPanel = () => setIsNotificationOpen(false);
@@ -24,11 +27,12 @@ const DashboardPage: React.FC = () => {
         let mounted = true;
         const load = async () => {
             try {
-                const [inc, out, teamReqs, fr] = await Promise.all([
+                const [inc, out, teamReqs, fr, persisted] = await Promise.all([
                     apiService.listFriendRequests('incoming'),
                     apiService.listFriendRequests('outgoing'),
                     apiService.listInvitations('received'),
-                    apiService.listFriends()
+                    apiService.listFriends(),
+                    apiService.listNotifications()
                 ]);
                 if (!mounted) return;
                 setIncoming(((inc as any).data as any[]) || []);
@@ -49,6 +53,8 @@ const DashboardPage: React.FC = () => {
                     };
                 }));
                 setFriends(fr || []);
+                const persistedList = ((persisted as any).data as any[]) || [];
+                setSystemEvents(persistedList.map((n: any) => ({ id: n.id, title: n.data?.title || n.title, startDate: n.data?.startDate, reason: n.message, createdAt: n.createdAt, read: !!n.read })));
             } catch { }
         };
         load();
@@ -75,18 +81,50 @@ const DashboardPage: React.FC = () => {
         s.on('friend:request:sent', onReq);
         s.on('friend:responded', onResp);
         s.on('team:join:request', onTeamJoinRequest);
+        s.on('tournament:deleted', (payload: any) => {
+            setSystemEvents(prev => [{
+                id: payload.id,
+                title: payload.title,
+                startDate: payload.startDate,
+                reason: 'Automatically removed (start time elapsed)',
+                createdAt: new Date().toISOString(),
+                read: false
+            }, ...prev]);
+        });
         return () => {
             mounted = false;
             s.off('friend:request', onReq);
             s.off('friend:request:sent', onReq);
             s.off('friend:responded', onResp);
             s.off('team:join:request', onTeamJoinRequest);
+            s.off('tournament:deleted');
         };
     }, []);
 
+    const friendRequests = useMemo(() => {
+        const inc = (incoming || []).map(r => ({ ...r, direction: 'incoming' as const }));
+        const out = (outgoing || []).map(r => ({ ...r, direction: 'outgoing' as const }));
+        return [...inc, ...out].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [incoming, outgoing]);
+
+    // Badge counts only actionable items (incoming pending), not outgoing
     const pendingFriendCount = incoming.filter(i => i.status === 'PENDING').length;
     const pendingTeamCount = teamJoinRequests.filter(t => t.status === 'PENDING').length;
-    const pendingCount = pendingFriendCount + pendingTeamCount;
+    const systemUnreadCount = systemEvents.filter(ev => !ev.read).length;
+    const pendingCount = pendingFriendCount + pendingTeamCount + systemUnreadCount;
+
+    // Auto-mark system notifications as read when opening panel
+    useEffect(() => {
+        if (!isNotificationOpen) return;
+        const hasUnread = systemEvents.some(ev => !ev.read);
+        if (!hasUnread) return;
+        (async () => {
+            try {
+                await apiService.markNotificationsRead();
+                setSystemEvents(prev => prev.map(ev => ({ ...ev, read: true })));
+            } catch {}
+        })();
+    }, [isNotificationOpen, systemEvents]);
 
     // Handle team join request actions
     const handleTeamJoinRequest = async (id: string, action: 'approve' | 'reject') => {
@@ -276,19 +314,93 @@ const DashboardPage: React.FC = () => {
                                 <div className="p-4 space-y-4">
                                     <div>
                                         <h5 className="font-medium mb-2">Friend Requests</h5>
-                                        <div className="space-y-2">
-                                            {incoming.map((r) => (
-                                                <IncomingItem key={r.id} item={r} onAction={async (id: string, action: 'accept' | 'decline') => {
-                                                    await apiService.respondFriendRequest(id, action);
-                                                    const inc = await apiService.listFriendRequests('incoming');
-                                                    const out = await apiService.listFriendRequests('outgoing');
-                                                    const fr = await apiService.listFriends();
-                                                    setIncoming(((inc as any).data as any[]) || []);
-                                                    setOutgoing(((out as any).data as any[]) || []);
-                                                    setFriends(fr || []);
-                                                }} />
-                                            ))}
-                                            {incoming.length === 0 && <div className="text-xs text-gray-500">No friend requests</div>}
+                                        <div className="space-y-2 select-none">
+                                            {friendRequests.map((r) => {
+                                                const isIncoming = r.direction === 'incoming';
+                                                const user = isIncoming ? (r.fromUser || { user_id: r.fromUserId, displayName: r.fromUserDisplayName }) : (r.toUser || { user_id: r.toUserId, displayName: r.toUserDisplayName });
+                                                const initials = (user?.displayName?.[0]?.toUpperCase() || '?');
+                                                // Date/Time hidden per requirements
+                                                return (
+                                                    <div
+                                                        key={r.id}
+                                                        className="relative overflow-hidden rounded-lg border"
+                                                        onPointerDown={() => { /* swipe disabled */ }}
+                                                        onPointerMove={(e) => {
+                                                            if (e.buttons !== 1) return;
+                                                            // swipe disabled
+                                                        }}
+                                                        onPointerUp={() => { /* keep or reset handled by move */ }}
+                                                    >
+                                                        {/* Trailing actions layer */}
+                                                        {/* Trailing actions removed per request */}
+                                                        {/* Foreground content that slides left */}
+                                                        <div
+                                                            className={`relative bg-white p-3 flex items-center justify-between shadow-sm select-none`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-700">
+                                                                    {initials}
+                                                                </div>
+                                                                <div>
+                                                                    <button
+                                                                        onClick={() => { closeNotificationPanel(); navigate(`/users/${user?.user_id}`); }}
+                                                                        className="text-sm font-semibold text-left text-gray-900 hover:text-blue-600 hover:underline"
+                                                                    >
+                                                                        {user?.displayName || user?.user_id}
+                                                                    </button>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isIncoming ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>{isIncoming ? 'Incoming' : 'Outgoing'}</span>
+                                                                        {/* no date */}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {isIncoming && r.status === 'PENDING' ? (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                await apiService.respondFriendRequest(r.id, 'accept');
+                                                                                const [inc, out, fr] = await Promise.all([
+                                                                                    apiService.listFriendRequests('incoming'),
+                                                                                    apiService.listFriendRequests('outgoing'),
+                                                                                    apiService.listFriends()
+                                                                                ]);
+                                                                                setIncoming(((inc as any).data as any[]) || []);
+                                                                                setOutgoing(((out as any).data as any[]) || []);
+                                                                                setFriends(fr || []);
+                                                                            }}
+                                                                            className="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+                                                                        >
+                                                                            Accept
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                await apiService.respondFriendRequest(r.id, 'decline');
+                                                                                const [inc, out, fr] = await Promise.all([
+                                                                                    apiService.listFriendRequests('incoming'),
+                                                                                    apiService.listFriendRequests('outgoing'),
+                                                                                    apiService.listFriends()
+                                                                                ]);
+                                                                                setIncoming(((inc as any).data as any[]) || []);
+                                                                                setOutgoing(((out as any).data as any[]) || []);
+                                                                                setFriends(fr || []);
+                                                                            }}
+                                                                            className="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
+                                                                        >
+                                                                            Decline
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'PENDING' ? 'bg-yellow-50 text-yellow-800' : r.status === 'ACCEPTED' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                                        {r.status}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {friendRequests.length === 0 && <div className="text-xs text-gray-500">No friend requests</div>}
                                         </div>
                                     </div>
                                     <div>
@@ -297,7 +409,12 @@ const DashboardPage: React.FC = () => {
                                             {teamJoinRequests.map((r) => (
                                                 <div key={r.id} className="p-2 border rounded flex items-center justify-between">
                                                     <div>
-                                                        <div className="text-sm font-semibold">{r.fromUser?.displayName || r.fromUserId}</div>
+                                                        <button
+                                                            onClick={() => { closeNotificationPanel(); navigate(`/users/${r.fromUser?.user_id || r.fromUserId}`); }}
+                                                            className="text-sm font-semibold text-left text-blue-600 hover:underline"
+                                                        >
+                                                            {r.fromUser?.displayName || r.fromUserId}
+                                                        </button>
                                                         <div className="text-xs text-gray-500">
                                                             Wants to join <span className="font-medium">{r.team?.title}</span>
                                                         </div>
@@ -327,20 +444,32 @@ const DashboardPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <h5 className="font-medium mb-2">Outgoing Friend Requests</h5>
+                                        <h5 className="font-medium mb-2 mt-4">System</h5>
                                         <div className="space-y-2">
-                                            {outgoing.map((r) => (
-                                                <div key={r.id} className="p-2 border rounded flex items-center justify-between">
-                                                    <div>
-                                                        <div className="text-sm font-semibold">{r.toUser?.displayName || r.toUserId}</div>
-                                                        <div className="text-[11px] text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
-                                                    </div>
-                                                    <span className="text-xs text-gray-600">{r.status}</span>
+                                            {systemEvents.map(ev => (
+                                                <div key={ev.id + ev.createdAt} className="p-2 border rounded bg-yellow-50 text-yellow-800 text-xs">
+                                                    {`The tournament "${ev.title}" was automatically removed because its scheduled start time had already passed.`}
                                                 </div>
                                             ))}
-                                            {outgoing.length === 0 && <div className="text-xs text-gray-500">No outgoing requests</div>}
+                                            {systemEvents.length === 0 && <div className="text-xs text-gray-500">No system notifications</div>}
+                                            {systemEvents.some(ev => !ev.read) && (
+                                                <div className="flex justify-end">
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await apiService.markNotificationsRead();
+                                                                setSystemEvents(prev => prev.map(ev => ({ ...ev, read: true })));
+                                                            } catch {}
+                                                        }}
+                                                        className="text-[11px] text-blue-700 hover:underline"
+                                                    >
+                                                        Mark system notifications as read
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+                                    {/* Outgoing list removed in favor of unified Friend Requests above */}
                                 </div>
                             )}
 
@@ -439,22 +568,4 @@ const HomeGamesSection: React.FC = () => {
     );
 };
 
-// Small component for incoming notification item with actions
-const IncomingItem: React.FC<{ item: any; onAction: (id: string, action: 'accept' | 'decline') => void }> = ({ item, onAction }) => {
-    return (
-        <div className="p-2 border rounded flex items-center justify-between">
-            <div>
-                <div className="text-sm font-semibold">{item.fromUser?.displayName || item.fromUserId}</div>
-                <div className="text-[11px] text-gray-500">{new Date(item.createdAt).toLocaleString()}</div>
-            </div>
-            {item.status === 'PENDING' ? (
-                <div className="flex gap-2">
-                    <button onClick={() => onAction(item.id, 'accept')} className="px-2 py-1 rounded bg-green-600 text-white text-xs">Accept</button>
-                    <button onClick={() => onAction(item.id, 'decline')} className="px-2 py-1 rounded bg-red-600 text-white text-xs">Decline</button>
-                </div>
-            ) : (
-                <span className="text-xs text-gray-600">{item.status}</span>
-            )}
-        </div>
-    );
-};
+// Legacy IncomingItem removed after unifying lists

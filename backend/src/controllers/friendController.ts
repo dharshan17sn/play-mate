@@ -28,6 +28,13 @@ export class FriendController {
         res.status(200).json(ResponseBuilder.success(result, 'Friend request updated'));
     });
 
+    // static cancel = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    //     if (!req.user) return res.status(401).json(ResponseBuilder.unauthorized('Not authenticated'));
+    //     const { requestId } = req.params as { requestId: string };
+    //     const result = await FriendService.cancel(requestId, req.user.user_id);
+    //     res.status(200).json(ResponseBuilder.success(result, 'Friend request withdrawn'));
+    // });
+
     static listFriends = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
         if (!req.user) return res.status(401).json(ResponseBuilder.unauthorized('Not authenticated'));
         const data = await FriendService.listFriends(req.user.user_id);

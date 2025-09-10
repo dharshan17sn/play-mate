@@ -3,6 +3,7 @@ import { config } from './config';
 import { database } from './config/database';
 import { logger } from './utils/logger';
 import { RealtimeService } from './services/realtime';
+import { CleanupService } from './services/cleanupService';
 import type { Server as HttpServer } from 'http';
 
 const server: HttpServer = app.listen(config.port, async () => {
@@ -11,6 +12,8 @@ const server: HttpServer = app.listen(config.port, async () => {
     await database.connect();
     // Initialize realtime layer
     RealtimeService.initialize(server);
+    // Start periodic cleanup tasks (expired tournaments)
+    CleanupService.start(5 * 60 * 1000);
 
     logger.info(`🚀 Server running on port ${config.port}`);
     logger.info(`📊 Environment: ${config.nodeEnv}`);

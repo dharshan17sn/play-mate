@@ -85,16 +85,20 @@ export class InvitationService {
             include: {
               fromUser: {
                 select: {
+                  user_id: true,
                   displayName: true,
+                  photo: true,
                 }
               },
               toUser: {
                 select: {
+                  user_id: true,
                   displayName: true,
                 }
               },
               team: {
                 select: {
+                  id: true,
                   title: true,
                 }
               }
@@ -102,6 +106,23 @@ export class InvitationService {
           })
         )
       );
+
+      // Emit realtime notification to each team admin
+      try {
+        const { RealtimeService } = await import('./realtime');
+        for (const inv of invitations) {
+          RealtimeService.emitToUser(inv.toUserId, 'team:join:request', {
+            id: inv.id,
+            fromUser: inv.fromUser,
+            toUser: inv.toUser,
+            team: inv.team,
+            status: 'PENDING',
+            sentAt: (inv as any).sentAt || new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        logger.error('Failed to emit realtime team:join:request notifications', e);
+      }
 
       logger.info(`Join request sent from ${data.fromUserId} to team ${data.teamId}`);
       return invitations[0]; // Return the first invitation for consistency

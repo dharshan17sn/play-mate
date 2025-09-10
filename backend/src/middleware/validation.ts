@@ -183,10 +183,11 @@ export const tournamentCreateSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(100),
     description: z.string().max(500).optional(),
-    gameId: z.string().uuid(),
+    gameId: z.string().min(1),
     startDate: z.string().datetime(),
     location: z.string().min(2).max(100),
     photo: z.string().optional(),
+    noOfPlayersPerTeam: z.number().int().min(1).max(50),
   }),
 });
 
@@ -197,6 +198,19 @@ export const tournamentUpdateSchema = z.object({
     startDate: z.string().datetime().optional(),
     location: z.string().min(2).max(100).optional(),
     photo: z.string().optional(),
+    noOfPlayersPerTeam: z.number().int().min(1).max(50).optional(),
+  }),
+});
+
+export const tournamentIdParamSchema = z.object({
+  params: z.object({
+    tournamentId: z.string().uuid(),
+  }),
+});
+
+export const tournamentTeamRegistrationSchema = z.object({
+  body: z.object({
+    teamId: z.string().uuid(),
   }),
 });
 

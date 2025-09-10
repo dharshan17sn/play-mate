@@ -97,6 +97,18 @@ export class FriendService {
         return result;
     }
 
+    // static async cancel(requestId: string, userId: string) {
+    //     const db: any = prisma as any;
+    //     const req = await db.friendRequest.findUnique({ where: { id: requestId } });
+    //     if (!req) throw new Error('Request not found');
+    //     if (req.fromUserId !== userId) throw new Error('Not authorized to cancel');
+    //     if (req.status !== 'PENDING') throw new Error('Only pending requests can be withdrawn');
+    //     await db.friendRequest.delete({ where: { id: requestId } });
+    //     // notify receiver
+    //     RealtimeService.emitToUser(req.toUserId, 'friend:request:withdrawn', { id: requestId });
+    //     return { id: requestId, deleted: true };
+    // }
+
     static async listFriends(userId: string) {
         const db: any = prisma as any;
         const asA = await db.friend.findMany({ where: { userAId: userId }, include: { userB: true } });

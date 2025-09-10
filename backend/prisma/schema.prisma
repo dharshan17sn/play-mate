@@ -69,6 +69,7 @@ model User {
   // teams/tournaments created by user
   createdTeams       Team[]       @relation("TeamCreator")
   createdTournaments Tournament[] @relation("TournamentCreator")
+  notifications Notification[] 
 }
 
 model Game {
@@ -129,6 +130,7 @@ model Tournament {
   photo     String?
   startDate DateTime
   location  String
+  noOfPlayersPerTeam Int? // Optional maximum number of players per team
 
   teams    TournamentTeam[]
   messages Message[]
@@ -260,4 +262,19 @@ model ChatMessage {
   sender User @relation("ChatMessageSender", fields: [senderId], references: [user_id])
 
   @@index([chatId, sentAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String?
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [user_id])
+
+  @@index([userId, read, createdAt])
 }

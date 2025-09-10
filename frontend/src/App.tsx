@@ -10,7 +10,12 @@ import ChatPage from './pages/ChatPage';
 import TeamMessagingPage from './pages/TeamMessagingPage';
 import GameDetailsPage from './pages/GameDetailsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ProfileViewPage from './pages/ProfileViewPage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
+import TournamentPage from './pages/TournamentPage';
+import TournamentCreationPage from './pages/TournamentCreationPage';
+import TournamentDetailsPage from './pages/TournamentDetailsPage';
+import TournamentEditPage from './pages/TournamentEditPage';
 import { apiService } from './services/api';
 
 // Protected Route component
@@ -108,10 +113,50 @@ function App() {
           }
         />
         <Route
+          path="/users/:userId"
+          element={
+            <ProtectedRoute>
+              <ProfileViewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/account-settings"
           element={
             <ProtectedRoute>
               <AccountSettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tournaments"
+          element={
+            <ProtectedRoute>
+              <TournamentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tournaments/create"
+          element={
+            <ProtectedRoute>
+              <TournamentCreationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tournaments/:tournamentId"
+          element={
+            <ProtectedRoute>
+              <TournamentDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tournaments/:tournamentId/edit"
+          element={
+            <ProtectedRoute>
+              <TournamentEditPage />
             </ProtectedRoute>
           }
         />

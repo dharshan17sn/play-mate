@@ -18,6 +18,8 @@ import invitationRoutes from './routes/invitationRoutes';
 import gameRoutes from './routes/gameRoutes';
 import friendRoutes from './routes/friendRoutes';
 import chatRoutes from './routes/chatRoutes';
+import tournamentRoutes from './routes/tournamentRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 // Create Express app
 const app = express();
@@ -94,6 +96,8 @@ app.use('/api/v1/invitations', invitationRoutes);
 app.use('/api/v1/games', gameRoutes);
 app.use('/api/v1/friends', friendRoutes);
 app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/tournaments', tournamentRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

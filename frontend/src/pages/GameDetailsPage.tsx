@@ -209,7 +209,7 @@ const GameDetailsPage: React.FC = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <div className="font-semibold text-gray-900">{u.displayName}</div>
+                                                <button onClick={() => navigate(`/users/${u.user_id}`)} className="font-semibold text-gray-900 text-left text-blue-600 hover:underline">{u.displayName}</button>
                                                 <div className="text-xs text-gray-500">{u.location}</div>
                                                 {expandedUserId === u.user_id && expandedUserProfile && (
                                                     <div className="mt-1 text-xs text-blue-600">

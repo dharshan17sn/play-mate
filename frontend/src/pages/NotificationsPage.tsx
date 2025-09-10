@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getSocket } from '../services/socket';
 import { apiService, type ApiResponse } from '../services/api';
 
@@ -15,6 +16,7 @@ type RequestItem = {
 };
 
 const NotificationsPage: React.FC = () => {
+    const navigate = useNavigate();
     const [incoming, setIncoming] = useState<RequestItem[]>([]);
     const [outgoing, setOutgoing] = useState<RequestItem[]>([]);
     const [teamJoinRequests, setTeamJoinRequests] = useState<RequestItem[]>([]);
@@ -141,7 +143,9 @@ const NotificationsPage: React.FC = () => {
                             {incoming.map(r => (
                                 <div key={r.id} className="p-3 rounded border bg-white flex items-center justify-between">
                                     <div>
-                                        <div className="font-semibold">{r.fromUser?.displayName || r.fromUserId}</div>
+                                        <button onClick={() => navigate(`/users/${r.fromUser?.user_id || r.fromUserId}`)} className="font-semibold text-left text-blue-600 hover:underline">
+                                            {r.fromUser?.displayName || r.fromUserId}
+                                        </button>
                                         <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
                                     </div>
                                     {r.status === 'PENDING' ? (
@@ -163,7 +167,9 @@ const NotificationsPage: React.FC = () => {
                             {outgoing.map(r => (
                                 <div key={r.id} className="p-3 rounded border bg-white flex items-center justify-between">
                                     <div>
-                                        <div className="font-semibold">{r.toUser?.displayName || r.toUserId}</div>
+                                        <button onClick={() => navigate(`/users/${r.toUser?.user_id || r.toUserId}`)} className="font-semibold text-left text-blue-600 hover:underline">
+                                            {r.toUser?.displayName || r.toUserId}
+                                        </button>
                                         <div className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
                                     </div>
                                     <span className="text-sm text-gray-600">{r.status}</span>
@@ -181,7 +187,9 @@ const NotificationsPage: React.FC = () => {
                             {teamJoinRequests.map(r => (
                                 <div key={r.id} className="p-3 rounded border bg-white flex items-center justify-between">
                                     <div>
-                                        <div className="font-semibold">{r.fromUser?.displayName || r.fromUserId}</div>
+                                        <button onClick={() => navigate(`/users/${r.fromUser?.user_id || r.fromUserId}`)} className="font-semibold text-left text-blue-600 hover:underline">
+                                            {r.fromUser?.displayName || r.fromUserId}
+                                        </button>
                                         <div className="text-xs text-gray-500">
                                             Wants to join <span className="font-medium">{r.team?.title}</span>
                                         </div>

@@ -1491,9 +1491,17 @@ export default function ChatPage() {
                     style={{
                       fontWeight: 800,
                       fontSize: 18,
-                      cursor: selectedTeamId ? "pointer" : "default",
+                      cursor: selectedTeamId ? "pointer" : selectedChatId ? "pointer" : "default",
                     }}
                     onClick={async () => {
+                      if (selectedChatId) {
+                        const chat = chats.find((c) => c.id === selectedChatId);
+                        if (chat) {
+                          const other = chat.userA.user_id === currentUserId ? chat.userB : chat.userA;
+                          navigate(`/users/${other.user_id}`);
+                          return;
+                        }
+                      }
                       if (!selectedTeamId) return;
 
                       setIsTeamInfoOpen(true);
@@ -3286,6 +3294,29 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-20">
+        <div className="flex justify-around items-center h-14">
+          <button onClick={() => navigate('/chat')} className="-mt-6 bg-blue-600 text-white rounded-full p-4 shadow-lg">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4-.8L3 20l.8-3.2A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </button>
+          <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center text-gray-600 hover:text-blue-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M13 5v6a2 2 0 002 2h3m-9 4h6m-6 0a2 2 0 01-2-2v-3m8 5a2 2 0 002-2v-3m0 0l2-2m-2 2l-2 2" />
+            </svg>
+            <span className="text-xs">Home</span>
+          </button>
+          <button onClick={() => navigate('/tournaments')} className="flex flex-col items-center text-gray-600 hover:text-blue-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-xs">Tournaments</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

@@ -88,6 +88,23 @@ router.post('/requests/bulk', authenticateToken, FriendController.sendRequestsTo
 
 /**
  * @openapi
+ * /api/v1/friends/requests/{requestId}:
+ *   delete:
+ *     summary: Withdraw a friend request (sender only)
+ *     tags: [Friends]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Friend request withdrawn }
+ */
+// router.delete('/requests/:requestId', authenticateToken, FriendController.cancel);
+
+/**
+ * @openapi
  * /api/v1/friends:
  *   get:
  *     summary: List friends
