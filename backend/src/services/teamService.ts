@@ -263,6 +263,8 @@ export class TeamService {
 
       // Delete related records first to avoid FK constraint violations
       await prisma.$transaction([
+        prisma.teamMessage.deleteMany({ where: { teamId } }),
+        prisma.tournamentTeam.deleteMany({ where: { teamId } }),
         prisma.teamMember.deleteMany({ where: { teamId } }),
         prisma.invitation.deleteMany({ where: { teamId } }),
       ]);
@@ -406,7 +408,13 @@ export class TeamService {
       const skip = (page - 1) * limit;
 
       let where: any = {
-        isPublic: true
+        isPublic: true,
+        // Only teams that currently have at least one accepted member
+        members: {
+          some: {
+            status: 'ACCEPTED'
+          }
+        }
       };
 
       if (gameName) {
@@ -772,6 +780,117 @@ export class TeamService {
       return true;
     } catch (error) {
       logger.error(`Error removing member ${memberId} from team ${teamId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Leave team with admin transfer logic.
+   * - If the leaver is creator/admin and no other admin exists, promote next member by alphabetical displayName.
+   * - If other admins exist, just leave.
+   */
+  static async leaveTeam(teamId: string, userId: string) {
+    try {
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        include: {
+          members: {
+            where: { status: 'ACCEPTED' },
+            include: { user: { select: { user_id: true, displayName: true } } },
+            orderBy: { joinedAt: 'asc' }
+          }
+        }
+      });
+
+      if (!team) throw new NotFoundError('Team not found');
+
+      const me = team.members.find(m => m.userId === userId);
+      if (!me) {
+        // Allow the creator to leave even if not listed as a member (e.g., solo team created via tournament)
+        if (team.creatorId !== userId) {
+          throw new ForbiddenError('You are not a member of this team');
+        }
+
+        const otherMembers = team.members;
+        const otherAdmins = otherMembers.filter(m => m.isAdmin === true);
+        if (otherAdmins.length === 0 && otherMembers.length > 0) {
+          const nextAdmin = [...otherMembers].sort((a, b) => {
+            const an = (a.user?.displayName || '').toLowerCase();
+            const bn = (b.user?.displayName || '').toLowerCase();
+            if (an < bn) return -1;
+            if (an > bn) return 1;
+            return 0;
+          })[0];
+          if (nextAdmin) {
+            await prisma.teamMember.update({ where: { id: nextAdmin.id }, data: { isAdmin: true } });
+          }
+        }
+
+        // If no members remain, delete team
+        const remainingCount = await prisma.teamMember.count({ where: { teamId } });
+        if (remainingCount === 0) {
+          // Clean related data before deleting team
+          await prisma.$transaction([
+            prisma.teamMessage.deleteMany({ where: { teamId } }),
+            prisma.tournamentTeam.deleteMany({ where: { teamId } }),
+            prisma.teamMember.deleteMany({ where: { teamId } }),
+            prisma.invitation.deleteMany({ where: { teamId } }),
+          ]);
+          await prisma.team.delete({ where: { id: teamId } });
+          return { deleted: true };
+        }
+
+        return { deleted: false };
+      }
+
+      const otherMembers = team.members.filter(m => m.userId !== userId);
+
+      // If leaving member is creator or admin, check other admins
+      const leavingIsCreator = team.creatorId === userId;
+      const leavingIsAdmin = me.isAdmin === true;
+
+      if (leavingIsCreator || leavingIsAdmin) {
+        const otherAdmins = otherMembers.filter(m => m.isAdmin === true);
+        if (otherAdmins.length === 0 && otherMembers.length > 0) {
+          // Promote next member by alphabetical order of displayName
+          const nextAdmin = [...otherMembers].sort((a, b) => {
+            const an = (a.user?.displayName || '').toLowerCase();
+            const bn = (b.user?.displayName || '').toLowerCase();
+            if (an < bn) return -1;
+            if (an > bn) return 1;
+            return 0;
+          })[0];
+
+          if (nextAdmin) {
+            await prisma.teamMember.update({
+              where: { id: nextAdmin.id },
+              data: { isAdmin: true }
+            });
+          }
+        }
+      }
+
+      // Remove the leaving member
+      await prisma.teamMember.delete({ where: { id: me.id } });
+
+      // If creator leaves and there are no members left, delete team
+      if (leavingIsCreator) {
+        const remaining = await prisma.teamMember.count({ where: { teamId } });
+        if (remaining === 0) {
+          await prisma.$transaction([
+            prisma.teamMessage.deleteMany({ where: { teamId } }),
+            prisma.tournamentTeam.deleteMany({ where: { teamId } }),
+            prisma.teamMember.deleteMany({ where: { teamId } }),
+            prisma.invitation.deleteMany({ where: { teamId } }),
+          ]);
+          await prisma.team.delete({ where: { id: teamId } });
+          return { deleted: true };
+        }
+      }
+
+      return { deleted: false };
+    } catch (error) {
+      logger.error(`Error leaving team ${teamId} by ${userId}:`, error);
       throw error;
     }
   }

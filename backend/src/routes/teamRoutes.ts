@@ -161,6 +161,9 @@ router.put('/:teamId/members/:memberId/admin', authenticateToken, validateReques
 router.delete('/:teamId/members/:memberId/admin', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.removeMemberAdmin);
 router.delete('/:teamId/members/:memberId', authenticateToken, validateRequest(teamMemberParamSchema), TeamController.removeMemberFromTeam);
 
+// Leave team (self)
+router.delete('/:teamId/leave', authenticateToken, validateRequest(teamIdParamSchema), TeamController.leaveTeam);
+
 // Team messaging endpoints
 router.post('/:teamId/messages', validateRequest(teamIdParamSchema), TeamMessageController.sendTeamMessage);
 router.get('/:teamId/messages', validateRequest(teamIdParamSchema), TeamMessageController.getTeamMessages);

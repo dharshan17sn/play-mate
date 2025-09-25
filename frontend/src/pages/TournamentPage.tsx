@@ -103,7 +103,14 @@ const TournamentPage: React.FC = () => {
       <header className="md:hidden bg-white shadow sticky top-0 z-20">
         <div className="px-4">
           <div className="flex items-center justify-between h-14">
-            <h1 className="text-lg font-bold text-gray-900">Tournaments</h1>
+            <div className="flex items-center gap-2">
+              <button onClick={() => navigate('/dashboard', { replace: true })} className="p-2 text-gray-600 hover:text-blue-600 rounded-full">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h1 className="text-lg font-bold text-gray-900">Tournaments</h1>
+            </div>
             <button
               onClick={handleCreateTournament}
               className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-700 transition-colors"

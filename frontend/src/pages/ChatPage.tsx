@@ -799,9 +799,14 @@ export default function ChatPage() {
                     lineHeight: "26px",
                     textAlign: "center",
                     cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  {"←"}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: "#111827" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
 
                 <span style={{ fontSize: 18 }}>Chats</span>
@@ -1450,12 +1455,14 @@ export default function ChatPage() {
                       borderRadius: 6,
                       width: 28,
                       height: 28,
-                      lineHeight: "26px",
-                      textAlign: "center",
+                      alignItems: "center",
+                      justifyContent: "center",
                       cursor: "pointer",
                     }}
                   >
-                    {"←"}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: "#111827" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                    </svg>
                   </button>
 
                   <div
@@ -2499,6 +2506,68 @@ export default function ChatPage() {
                             </div>
                           );
                         })()}
+
+                        {/* Actions: Exit and Delete/Exit */}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          <button
+                            onClick={async () => {
+                              if (!selectedTeamId) return;
+                              try {
+                                await apiService.leaveTeam(selectedTeamId);
+                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                                setIsTeamInfoOpen(false);
+                                setSelectedTeamId(null);
+                              } catch (e: any) {
+                                setError(e?.message || "Failed to leave team");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 13,
+                              border: "1px solid #d1d5db",
+                              borderRadius: 6,
+                              background: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Exit team
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!selectedTeamId) return;
+                              if (!confirm('Are you sure you want to delete this team?')) return;
+                              try {
+                                try {
+                                  await apiService.deleteTeam(selectedTeamId);
+                                } catch (_) {
+                                  await apiService.leaveTeam(selectedTeamId);
+                                }
+                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                                setIsTeamInfoOpen(false);
+                                setSelectedTeamId(null);
+                              } catch (e: any) {
+                                setError(e?.message || "Failed to delete/exit team");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 13,
+                              border: "1px solid #fecaca",
+                              color: "#dc2626",
+                              borderRadius: 6,
+                              background: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete / Exit
+                          </button>
+                        </div>
 
                         <div style={{ color: "#374151" }}>
                           Game:{" "}

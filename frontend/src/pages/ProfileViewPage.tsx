@@ -50,7 +50,11 @@ const ProfileViewPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-blue-600">← Back</button>
+          <button onClick={() => navigate(-1)} className="p-2 bg-white rounded-full border border-gray-200 hover:bg-gray-50" title="Go Back">
+            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
           <h1 className="text-lg font-semibold text-gray-900">Profile</h1>
           <div className="w-10" />
         </div>

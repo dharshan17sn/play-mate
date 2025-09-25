@@ -1,11 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import LogoCarousel from '../components/LogoCarousel';
 import ShinyText from '../components/ShinyText';
+import { apiService } from '../services/api';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+    const faqs: Array<{ q: string; a: string }> = [
+        {
+            q: 'How to create a team?',
+            a: 'Go to Dashboard → Chats → Create Team, name it, pick game, and invite friends.'
+        },
+        {
+            q: 'Account settings',
+            a: 'Open Account from the profile, then edit profile, manage preferences, and notifications.'
+        },
+        {
+            q: 'Report an issue',
+            a: 'Go to Help Center from the footer and submit a brief description with steps.'
+        }
+    ];
+
+    const handleFooterNav = (dest: 'games' | 'teams' | 'tournaments') => {
+        const isAuthed = apiService.isAuthenticated();
+        if (dest === 'tournaments') {
+            navigate(isAuthed ? '/tournaments' : '/login');
+            return;
+        }
+        // games or teams
+        navigate(isAuthed ? '/dashboard' : '/login');
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -163,32 +190,44 @@ const LandingPage: React.FC = () => {
                                     <svg className="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
-                                    <span className="text-gray-600">support@playmate.com</span>
+                                    <a href="mailto:dharshan11sn@gmail.com" className="text-blue-600 hover:text-blue-700 hover:underline">
+                                        dharshan11sn@gmail.com
+                                    </a>
                                 </div>
                                 <div className="flex items-center">
                                     <svg className="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                     </svg>
-                                    <span className="text-gray-600">Live Chat Available</span>
+                                    <a href="https://discord.gg/UVGampFect" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline">
+                                        Join Discord
+                                    </a>
                                 </div>
                             </div>
                         </div>
 
                         <div>
                             <h3 className="text-2xl font-semibold text-gray-900 mb-6">Quick Support</h3>
-                            <div className="space-y-4">
-                                <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors duration-200">
-                                    <h4 className="font-semibold text-gray-900">How to create a team?</h4>
-                                    <p className="text-gray-600 text-sm">Learn the basics of team creation</p>
-                                </button>
-                                <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors duration-200">
-                                    <h4 className="font-semibold text-gray-900">Account settings</h4>
-                                    <p className="text-gray-600 text-sm">Manage your profile and preferences</p>
-                                </button>
-                                <button className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors duration-200">
-                                    <h4 className="font-semibold text-gray-900">Report an issue</h4>
-                                    <p className="text-gray-600 text-sm">Help us improve by reporting bugs</p>
-                                </button>
+                            <div className="space-y-3">
+                                {faqs.map((item, idx) => {
+                                    const isOpen = openFaq === idx;
+                                    return (
+                                        <div key={item.q} className={`border rounded-lg transition-colors duration-200 ${isOpen ? 'border-blue-300' : 'border-gray-200 hover:border-blue-300'}`}>
+                                            <button
+                                                onClick={() => setOpenFaq(isOpen ? null : idx)}
+                                                className="w-full text-left p-4 flex items-center justify-between"
+                                                aria-expanded={isOpen}
+                                            >
+                                                <h4 className="font-semibold text-gray-900">{item.q}</h4>
+                                                <span className={`ml-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>▾</span>
+                                            </button>
+                                            {isOpen && (
+                                                <div className="px-4 pb-4 -mt-2">
+                                                    <p className="text-gray-600 text-sm">{item.a}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -208,9 +247,15 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-semibold mb-4">Platform</h4>
                             <ul className="space-y-2 text-gray-400">
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Games</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Teams</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Tournaments</a></li>
+                                <li>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleFooterNav('games'); }} className="hover:text-white transition-colors duration-200">Games</a>
+                                </li>
+                                <li>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleFooterNav('teams'); }} className="hover:text-white transition-colors duration-200">Teams</a>
+                                </li>
+                                <li>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleFooterNav('tournaments'); }} className="hover:text-white transition-colors duration-200">Tournaments</a>
+                                </li>
                             </ul>
                         </div>
                         <div>

@@ -208,6 +208,13 @@ export const tournamentIdParamSchema = z.object({
   }),
 });
 
+export const tournamentAndTeamIdParamSchema = z.object({
+  params: z.object({
+    tournamentId: z.string().uuid(),
+    teamId: z.string().uuid(),
+  }),
+});
+
 export const tournamentTeamRegistrationSchema = z.object({
   body: z.object({
     teamId: z.string().uuid(),

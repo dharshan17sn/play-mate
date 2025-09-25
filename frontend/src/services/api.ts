@@ -667,6 +667,31 @@ class ApiService {
     }
   }
 
+  // Leave team (self)
+  async leaveTeam(teamId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}/leave`, {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error leaving team:', error);
+      throw error;
+    }
+  }
+
+  async deleteTeam(teamId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}`, {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      throw error;
+    }
+  }
+
   // Tournament API methods
   async createTournament(data: {
     title: string;

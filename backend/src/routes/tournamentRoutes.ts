@@ -6,6 +6,7 @@ import {
   tournamentCreateSchema,
   tournamentUpdateSchema,
   tournamentIdParamSchema,
+  tournamentAndTeamIdParamSchema,
   tournamentTeamRegistrationSchema,
   paginationSchema,
 } from '../middleware/validation';
@@ -258,6 +259,6 @@ router.post('/:tournamentId/register', authenticateToken, validateRequest(tourna
  *       403: { description: Forbidden - not team owner or tournament creator }
  *       404: { description: Tournament, team, or registration not found }
  */
-router.delete('/:tournamentId/teams/:teamId', authenticateToken, validateRequest(tournamentIdParamSchema), TournamentController.unregisterTeamFromTournament);
+router.delete('/:tournamentId/teams/:teamId', authenticateToken, validateRequest(tournamentAndTeamIdParamSchema), TournamentController.unregisterTeamFromTournament);
 
 export default router;

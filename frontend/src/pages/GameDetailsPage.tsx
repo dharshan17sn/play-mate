@@ -94,6 +94,36 @@ const GameDetailsPage: React.FC = () => {
         return () => { isMounted = false; };
     }, [expandedUserId]);
 
+    // Predicate to exclude deleted/archived/inactive teams (esp. tournament-created that are removed)
+    const isTeamVisible = (team: any): boolean => {
+        const status = String(team?.status || '').toUpperCase();
+        const tournamentStatus = String(team?.tournament?.status || '').toUpperCase();
+
+        // Common deletion/archival flags
+        const isDeleted = team?.isDeleted === true || !!team?.deletedAt || status === 'DELETED' || status === 'REMOVED';
+        const isArchivedOrInactive = team?.archived === true || team?.isActive === false || status === 'ARCHIVED' || status === 'INACTIVE';
+
+        // Tournament-related removal flags
+        const isTournamentTeam = !!team?.tournamentId || !!team?.tournament || team?.createdInTournament === true || team?.tournamentTeam === true;
+        const removedByCreator = team?.creatorRemoved === true || team?.removedByCreator === true || team?.tournamentDeleted === true;
+        const tournamentDeletedOrCancelled = tournamentStatus === 'DELETED' || tournamentStatus === 'CANCELLED' || tournamentStatus === 'REMOVED' || !!team?.tournament?.deletedAt;
+
+        // Creator/user deletion flags
+        const creatorStatus = String(team?.creator?.status || '').toUpperCase();
+        const creatorDeleted = team?.creatorDeleted === true || team?.ownerDeleted === true || team?.creator?.isDeleted === true || !!team?.creator?.deletedAt || creatorStatus === 'DELETED' || creatorStatus === 'REMOVED';
+
+        // Solo team special-case: hide if solo and not clearly active
+        const isSolo = String(team?.type || team?.mode || '').toUpperCase() === 'SOLO' || team?.isSolo === true || team?.isSingle === true;
+        const soloInvalid = isSolo && (isDeleted || isArchivedOrInactive || removedByCreator || tournamentDeletedOrCancelled);
+
+        if (isDeleted || isArchivedOrInactive) return false;
+        if (isTournamentTeam && (removedByCreator || tournamentDeletedOrCancelled)) return false;
+        if (creatorDeleted) return false;
+        if (soloInvalid) return false;
+
+        return true;
+    };
+
     // Load teams when teams tab is active
     useEffect(() => {
         if (activeTab !== 'teams') return;
@@ -108,7 +138,8 @@ const GameDetailsPage: React.FC = () => {
                     limit: 20
                 });
                 const teamsData = (response as ApiResponse).data?.teams || [];
-                if (isMounted) setTeams(teamsData);
+                const filtered = teamsData.filter(isTeamVisible);
+                if (isMounted) setTeams(filtered);
             } catch (e: any) {
                 console.error('Failed to load teams:', e);
             } finally {
@@ -165,7 +196,7 @@ const GameDetailsPage: React.FC = () => {
         <div className="min-h-screen bg-gray-50">
             <header className="bg-white shadow sticky top-0 z-10">
                 <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
-                    <button onClick={() => navigate(-1)} className="p-2 rounded hover:bg-gray-100">
+                    <button onClick={() => navigate('/dashboard', { replace: true })} className="p-2 rounded hover:bg-gray-100">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </button>
                     <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
@@ -222,7 +253,7 @@ const GameDetailsPage: React.FC = () => {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => setExpandedUserId(expandedUserId === u.user_id ? null : u.user_id)}
-                                                className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
+                                                className="px-2 py-1 text-xs sm:px-3 sm:py-2 sm:text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
                                             >
                                                 {expandedUserId === u.user_id ? 'Hide time' : 'View time'}
                                             </button>
@@ -243,7 +274,7 @@ const GameDetailsPage: React.FC = () => {
                                                             alert(e?.message || 'Failed to send request');
                                                         }
                                                     }}
-                                                    className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                                    className="px-2 py-1 text-xs sm:px-3 sm:py-2 sm:text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                                                 >
                                                     Send Request
                                                 </button>
@@ -277,7 +308,7 @@ const GameDetailsPage: React.FC = () => {
                                 {teams.map((team) => (
                                     <div key={team.id} className="bg-white rounded-xl border border-gray-200 p-4">
                                         <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 min-w-0">
                                                 <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
                                                     {team.photo ? (
                                                         <img src={team.photo} alt={team.title} className="w-full h-full object-cover" />
@@ -285,9 +316,16 @@ const GameDetailsPage: React.FC = () => {
                                                         <span className="text-gray-600 font-semibold">{team.title[0]?.toUpperCase()}</span>
                                                     )}
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <h3 className="font-semibold text-gray-900">{team.title}</h3>
-                                                    <p className="text-sm text-gray-600">{team.description || 'No description'}</p>
+                                                    {team.description === 'Auto-created for tournament registration' ? (
+                                                        <div className="mt-0.5">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 sm:hidden">Tournament auto-team</span>
+                                                            <p className="hidden sm:block text-sm text-gray-600 break-words">{team.description}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs sm:text-sm text-gray-600 truncate sm:whitespace-normal sm:break-words max-w-[180px] sm:max-w-none">{team.description || 'No description'}</p>
+                                                    )}
                                                     <div className="flex items-center gap-4 mt-1">
                                                         <span className="text-xs text-gray-500">
                                                             {team._count?.members || 0} members

@@ -116,5 +116,22 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Lexend', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   }
+}
+
+/* Ribbon background (from samp.html) */
+.bg-ribbons {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.15;
+}
+.ribbon {
+  position: absolute;
+  filter: blur(25px);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  transition: all 3s ease-in-out;
 }

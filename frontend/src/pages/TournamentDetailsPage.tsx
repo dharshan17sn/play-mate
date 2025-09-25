@@ -53,6 +53,7 @@ const TournamentDetailsPage: React.FC = () => {
   const [pendingRequestedTeamIds, setPendingRequestedTeamIds] = useState<Set<string>>(new Set());
   const [isCreatingIndividual, setIsCreatingIndividual] = useState(false);
   const [soloTeamTitle, setSoloTeamTitle] = useState('');
+  const [teamDetailsById, setTeamDetailsById] = useState<Record<string, any>>({});
 
   // Safely derive team member count across different API shapes
   const getTeamMemberCount = (team: any): number => {
@@ -99,6 +100,16 @@ const TournamentDetailsPage: React.FC = () => {
         setTeamMembersById(prev => ({ ...prev, [teamId]: membersArray }));
       } catch (e: any) {
         // Keep UI functional even if fetch fails
+      }
+    }
+    // Lazy-load team details (creatorId, admin flags) if not cached
+    if (!teamDetailsById[teamId]) {
+      try {
+        const res = await apiService.getTeamById(teamId);
+        const data = (res as any)?.data ?? res;
+        setTeamDetailsById(prev => ({ ...prev, [teamId]: data }));
+      } catch (e: any) {
+        // ignore
       }
     }
   };
@@ -607,11 +618,16 @@ const TournamentDetailsPage: React.FC = () => {
                 }
 
                 return (
-                  <div className="divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-visible">
                     {filteredTeams.map((team) => {
                       const pending = activeTab === 'pending';
-                      const canRequest = pending && currentUserId && !isUserMemberOfTeam(team);
+                      const canRequest = pending && currentUserId && currentUserId !== tournament.creator.user_id && !isUserMemberOfTeam(team);
                       const alreadyRequested = requestedTeamIds.has(team.id) || pendingRequestedTeamIds.has(team.id);
+                      const details = teamDetailsById[team.id];
+                      const isCurrentUserAdmin = !!currentUserId && (
+                        details?.creatorId === currentUserId ||
+                        (Array.isArray(details?.members) && details.members.some((m: any) => (m.userId === currentUserId || m.user?.user_id === currentUserId) && (m.isAdmin === true || m.role === 'ADMIN')))
+                      );
                       return (
                       <div key={team.id} className="p-4 cursor-pointer" onClick={() => toggleTeamExpanded(team.id)}>
                         <div className="flex items-center justify-between">
@@ -636,6 +652,33 @@ const TournamentDetailsPage: React.FC = () => {
                               <p className="text-sm text-gray-500">{getTeamMemberCount(team)} members</p>
                             </div>
                           </div>
+                          <div className="flex items-center space-x-2">
+                          {isCurrentUserAdmin && (
+                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                              <details className="group">
+                                <summary className="list-none cursor-pointer p-1 rounded hover:bg-gray-200">
+                                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                                  </svg>
+                                </summary>
+                                <div className="absolute right-0 bottom-full mb-1 w-44 bg-white border border-gray-200 rounded shadow z-10">
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await apiService.unregisterTeamFromTournament(tournamentId as string, team.id);
+                                        loadTournament();
+                                      } catch (err: any) {
+                                        setError(err?.message || 'Failed to unregister team');
+                                      }
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                                  >
+                                    Unregister from Tournament
+                                  </button>
+                                </div>
+                              </details>
+                            </div>
+                          )}
                           {canRequest && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRequestToJoin(team.id); }}
@@ -645,6 +688,7 @@ const TournamentDetailsPage: React.FC = () => {
                               {alreadyRequested ? 'Requested' : 'Request'}
                             </button>
                           )}
+                          </div>
                         </div>
                         {expandedTeamIds.has(team.id) && (
                           <div className="mt-3 pl-13">

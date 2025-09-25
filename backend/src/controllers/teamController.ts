@@ -264,4 +264,23 @@ export class TeamController {
       ResponseBuilder.success(null, 'Member removed from team successfully')
     );
   });
+
+  /**
+   * Leave team (self-remove). Handles admin transfer when necessary.
+   */
+  static leaveTeam = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    const { teamId } = req.params as { teamId: string };
+
+    const result = await TeamService.leaveTeam(teamId, req.user.user_id);
+
+    res.status(200).json(
+      ResponseBuilder.success(result, 'Left team successfully')
+    );
+  });
 }

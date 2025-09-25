@@ -228,9 +228,9 @@ const TeamMessagingPage: React.FC = () => {
                 <div className="h-screen bg-gray-50 flex flex-col">
                     {/* Mobile Team Header */}
                     <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center space-x-3">
-                        <button onClick={goBackToTeams} className="p-2 -ml-2">
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <button onClick={goBackToTeams} className="p-2 -ml-2 bg-white rounded-full border border-gray-200 hover:bg-gray-50" title="Go Back">
+                            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
                         <div className="flex-1">
@@ -243,14 +243,56 @@ const TeamMessagingPage: React.FC = () => {
                     <div className="flex-1 overflow-y-auto bg-gray-50">
                         {/* Team Photo */}
                         <div className="bg-white p-6 text-center border-b border-gray-200">
-                            <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center mx-auto mb-4">
+                            <div className="w-36 h-36 md:w-40 md:h-40 rounded-full overflow-hidden flex items-center justify-center mx-auto mb-4">
                                 {selectedTeam.photo ? (
-                                    <img src={selectedTeam.photo} alt={selectedTeam.title} className="w-full h-full object-cover" />
+                                    <img src={selectedTeam.photo} alt={selectedTeam.title} className="w-full h-full object-cover rounded-full" />
                                 ) : (
-                                    <span className="text-gray-600 font-semibold text-2xl">{selectedTeam.title[0]?.toUpperCase()}</span>
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700">
+                                        <span className="text-white font-bold text-4xl leading-none">
+                                            {selectedTeam.title[0]?.toUpperCase()}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
                             <h2 className="text-xl font-semibold text-gray-900 mb-2">{selectedTeam.title}</h2>
+                            {/* Mobile actions */}
+                            <div className="flex items-center justify-center space-x-3 mt-2">
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await apiService.leaveTeam(selectedTeam.id);
+                                            setTeams(prev => prev.filter(t => t.id !== selectedTeam.id));
+                                            setSelectedTeam(null);
+                                            setMessages([]);
+                                        } catch (e) {
+                                            console.error('Failed to leave team', e);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Exit team
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Delete this team? If you are creator, it deletes for everyone. Otherwise it removes only for you.')) return;
+                                        try {
+                                            try {
+                                                await apiService.deleteTeam(selectedTeam.id);
+                                            } catch (_) {
+                                                await apiService.leaveTeam(selectedTeam.id);
+                                            }
+                                            setTeams(prev => prev.filter(t => t.id !== selectedTeam.id));
+                                            setSelectedTeam(null);
+                                            setMessages([]);
+                                        } catch (e) {
+                                            console.error('Failed to delete/exit team', e);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50"
+                                >
+                                    Delete / Exit
+                                </button>
+                            </div>
                         </div>
 
                         {/* Game Info */}
@@ -494,10 +536,43 @@ const TeamMessagingPage: React.FC = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                                     </svg>
                                 </button>
-                                <button className="p-2 text-gray-500 hover:text-gray-700">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                    </svg>
+                                {/* Visible desktop actions */}
+                                <button
+                                    onClick={async () => {
+                                        if (!selectedTeam) return;
+                                        try {
+                                            await apiService.leaveTeam(selectedTeam.id);
+                                            setTeams(prev => prev.filter(t => t.id !== selectedTeam.id));
+                                            setSelectedTeam(null);
+                                            setMessages([]);
+                                        } catch (e) {
+                                            console.error('Failed to leave team', e);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Exit team
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!selectedTeam) return;
+                                        if (!confirm('Delete this team? If you are creator, it deletes for everyone. Otherwise it removes only for you.')) return;
+                                        try {
+                                            try {
+                                                await apiService.deleteTeam(selectedTeam.id);
+                                            } catch (_) {
+                                                await apiService.leaveTeam(selectedTeam.id);
+                                            }
+                                            setTeams(prev => prev.filter(t => t.id !== selectedTeam.id));
+                                            setSelectedTeam(null);
+                                            setMessages([]);
+                                        } catch (e) {
+                                            console.error('Failed to delete/exit team', e);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50"
+                                >
+                                    Delete / Exit
                                 </button>
                             </div>
                         </div>

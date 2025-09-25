@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService, type Game } from '../services/api';
+import GlobalSearch from '../components/GlobalSearch';
+import RibbonBackground from '../components/RibbonBackground';
 import { getSocket } from '../services/socket';
 
 const DashboardPage: React.FC = () => {
@@ -156,7 +158,8 @@ const DashboardPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 relative">
+            <RibbonBackground />
             {/* Desktop Header */}
             <header className="hidden md:block bg-white shadow">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -170,17 +173,8 @@ const DashboardPage: React.FC = () => {
                             </nav>
                         </div>
                         <div className="flex items-center space-x-3">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Search"
-                                    className="w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
-                                    </svg>
-                                </span>
+                            <div className="w-72">
+                                <GlobalSearch />
                             </div>
                             <button
                                 onClick={openNotificationPanel}
@@ -213,16 +207,7 @@ const DashboardPage: React.FC = () => {
                 <div className="px-4">
                     <div className="flex items-center h-14 space-x-2">
                         <div className="relative flex-1">
-                            <input
-                                type="text"
-                                placeholder="Search"
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
-                                </svg>
-                            </span>
+                            <GlobalSearch />
                         </div>
                         <button onClick={openNotificationPanel} className="relative p-2 text-gray-600 hover:text-blue-600 rounded-full" title="Notifications">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -517,6 +502,19 @@ const HomeGamesSection: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
 
+    const getBackgroundForGame = (name: string): string | undefined => {
+        const lower = (name || '').toLowerCase();
+        if (lower.includes('football') || lower.includes('soccer')) return '/images/football.jpg';
+        if (lower.includes('cricket')) return '/images/cricket.jpg';
+        if (lower.includes('badminton')) return '/images/badminton.jpg';
+        if (lower.includes('tennis')) return '/images/tennis.png';
+        if (lower.includes('basketball')) return '/images/basketball.jpg';
+        if (lower.includes('volleyball')) return '/images/volleyball.jpg';
+        if (lower.includes('hockey')) return '/images/hockey.png';
+        if (lower.includes('kabaddi')) return '/images/kabaddi.jpg';
+        return undefined;
+    };
+
     useEffect(() => {
         let isMounted = true;
         (async () => {
@@ -555,13 +553,24 @@ const HomeGamesSection: React.FC = () => {
 
             {!isLoading && !error && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-                    {games.map((game, index) => (
-                        <div onClick={() => window.location.href = `/games/${encodeURIComponent(game.name)}`} key={`${game.id || game.name}-${index}`} className="group bg-white rounded-2xl shadow hover:shadow-lg transition-shadow duration-200 p-4 flex items-center justify-center h-32 md:h-40 lg:h-48 cursor-pointer">
-                            <span className="text-sm md:text-lg lg:text-xl font-bold text-gray-900 group-hover:text-blue-600 text-center leading-tight">
-                                {game.name}
-                            </span>
-                        </div>
-                    ))}
+                    {games.map((game, index) => {
+                        const bg = getBackgroundForGame(game.name);
+                        return (
+                            <div
+                                onClick={() => (window.location.href = `/games/${encodeURIComponent(game.name)}`)}
+                                key={`${game.id || game.name}-${index}`}
+                                className={`group relative rounded-2xl overflow-hidden shadow hover:shadow-lg transition-shadow duration-200 h-32 md:h-40 lg:h-48 cursor-pointer ${bg ? '' : 'bg-white'}`}
+                                style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                            >
+                                {bg && <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />}
+                                <div className="absolute inset-0 flex items-center justify-center p-4">
+                                    <span className={`text-sm md:text-lg lg:text-xl font-extrabold text-center leading-tight drop-shadow ${bg ? 'text-white' : 'text-gray-900 group-hover:text-blue-600'}`}>
+                                        {game.name}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </section>

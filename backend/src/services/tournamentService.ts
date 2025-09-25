@@ -187,7 +187,13 @@ export class TournamentService {
         throw new Error('Tournament not found');
       }
 
-      return tournament;
+      // Filter out teams with zero accepted members (avoid ghost pending teams)
+      const filteredTeams = (tournament.teams || []).filter((tt: any) => {
+        const members = tt?.team?.members || [];
+        return Array.isArray(members) && members.length > 0;
+      });
+
+      return { ...tournament, teams: filteredTeams } as any;
     } catch (error) {
       console.error('Error fetching tournament by ID:', error);
       throw error;
@@ -482,7 +488,9 @@ export class TournamentService {
         },
       });
 
-      return tournamentTeams;
+      // Filter out teams with zero accepted members
+      const filtered = tournamentTeams.filter((tt: any) => Array.isArray(tt?.team?.members) && tt.team.members.length > 0);
+      return filtered as any;
     } catch (error) {
       console.error('Error fetching tournament teams:', error);
       throw error;
