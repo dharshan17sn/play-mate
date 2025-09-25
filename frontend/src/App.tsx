@@ -16,6 +16,7 @@ import TournamentPage from './pages/TournamentPage';
 import TournamentCreationPage from './pages/TournamentCreationPage';
 import TournamentDetailsPage from './pages/TournamentDetailsPage';
 import TournamentEditPage from './pages/TournamentEditPage';
+import TeamInvitePage from './pages/TeamInvitePage';
 import { apiService } from './services/api';
 
 // Protected Route component
@@ -35,6 +36,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/team-invite/:teamId" element={<TeamInvitePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

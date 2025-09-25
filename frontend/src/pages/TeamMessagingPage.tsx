@@ -325,6 +325,22 @@ const TeamMessagingPage: React.FC = () => {
                                 >
                                     Delete / Exit
                                 </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const shareUrl = `${window.location.origin}/team-invite/${encodeURIComponent(selectedTeam.id)}`;
+                                            if (navigator.share) {
+                                                await navigator.share({ title: selectedTeam.title, url: shareUrl });
+                                            } else {
+                                                await navigator.clipboard.writeText(shareUrl);
+                                                alert('Invite link copied to clipboard');
+                                            }
+                                        } catch {}
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-indigo-300 text-indigo-700 rounded-md hover:bg-indigo-50"
+                                >
+                                    Share
+                                </button>
                             </div>
                         </div>
 
@@ -620,6 +636,23 @@ const TeamMessagingPage: React.FC = () => {
                                     className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50"
                                 >
                                     Delete / Exit
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!selectedTeam) return;
+                                        try {
+                                            const shareUrl = `${window.location.origin}/team-invite/${encodeURIComponent(selectedTeam.id)}`;
+                                            if (navigator.share) {
+                                                await navigator.share({ title: selectedTeam.title, url: shareUrl });
+                                            } else {
+                                                await navigator.clipboard.writeText(shareUrl);
+                                                alert('Invite link copied to clipboard');
+                                            }
+                                        } catch {}
+                                    }}
+                                    className="px-3 py-1.5 text-sm border border-indigo-300 text-indigo-700 rounded-md hover:bg-indigo-50"
+                                >
+                                    Share
                                 </button>
                             </div>
                         </div>

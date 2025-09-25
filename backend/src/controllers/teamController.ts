@@ -176,6 +176,30 @@ export class TeamController {
   });
 
   /**
+   * Join a team directly (invite links). No admin approval required.
+   */
+  static joinTeamDirect = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    const { teamId } = req.params as { teamId: string };
+    if (!teamId) {
+      return res.status(400).json(
+        ResponseBuilder.validationError('Team ID is required')
+      );
+    }
+
+    const result = await TeamService.joinTeamDirect(req.user.user_id, teamId);
+
+    res.status(200).json(
+      ResponseBuilder.success(result, 'Joined team successfully')
+    );
+  });
+
+  /**
    * Get team members
    */
   static getTeamMembers = asyncErrorHandler(async (req: Request, res: Response) => {

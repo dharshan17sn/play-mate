@@ -329,13 +329,9 @@ export default function ChatPage() {
     window.history.replaceState({}, document.title, url.toString());
   }, [activeTab, routeChatId, routeTeamId]);
 
-  // On small screens, navigate to dedicated routes when a chat/team is selected
+  // Keep the URL in sync with current selection for all screen sizes
 
   useEffect(() => {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    if (!isMobile) return;
-
     if (activeTab === "messages" && selectedChatId) {
       navigate(`/chat/c/${encodeURIComponent(selectedChatId)}`, {
         replace: true,
@@ -344,6 +340,8 @@ export default function ChatPage() {
       navigate(`/chat/t/${encodeURIComponent(selectedTeamId)}`, {
         replace: true,
       });
+    } else if (!selectedChatId && !selectedTeamId) {
+      navigate(`/chat`, { replace: true });
     }
   }, [activeTab, selectedChatId, selectedTeamId]);
 
@@ -393,11 +391,34 @@ export default function ChatPage() {
         if (selectedChatId) {
           const res = await apiService.getChatMessages(selectedChatId, 50, 0);
 
-          if (!cancelled) setConversation((res.data as DirectMessage[]) || []);
+          if (!cancelled) {
+            const items = ((res.data as DirectMessage[]) || []).slice();
+            items.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+            // Ensure uniqueness by id
+            const seen = new Set<string>();
+            const deduped = items.filter((m: any) => {
+              const id = String((m as any).id);
+              if (seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            });
+            setConversation(deduped);
+          }
         } else if (selectedTeamId) {
           const res = await apiService.getTeamMessages(selectedTeamId);
 
-          if (!cancelled) setConversation((res.data as TeamMessage[]) || []);
+          if (!cancelled) {
+            const items = ((res.data as TeamMessage[]) || []).slice();
+            items.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+            const seen = new Set<string>();
+            const deduped = items.filter((m: any) => {
+              const id = String((m as any).id);
+              if (seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            });
+            setConversation(deduped);
+          }
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load conversation");
@@ -447,24 +468,23 @@ export default function ChatPage() {
     const socket = getSocket();
 
     function onChatMessage(payload: any) {
-      // If the incoming message belongs to currently open chat, append
-
+      // If the incoming message belongs to currently open chat, append once and keep sorted
       if (selectedChatId && payload?.chatId === selectedChatId) {
-        setConversation((prev) => [
-          ...prev,
-
-          {
-            id: payload.id,
-
-            chatId: payload.chatId,
-
-            content: payload.content,
-
-            sentAt: payload.sentAt,
-
-            sender: payload.sender,
-          } as DirectMessage,
-        ]);
+        setConversation((prev) => {
+          if (prev.some((m) => (m as any).id === payload.id)) return prev;
+          const next = [
+            ...prev,
+            {
+              id: payload.id,
+              chatId: payload.chatId,
+              content: payload.content,
+              sentAt: payload.sentAt,
+              sender: payload.sender,
+            } as DirectMessage,
+          ];
+          next.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+          return next;
+        });
       }
 
       // Update chat list lastMessage
@@ -496,41 +516,45 @@ export default function ChatPage() {
     }
 
     function onChatMessageSent(payload: any) {
-      if (selectedChatId && payload?.chatId === selectedChatId) {
-        setConversation((prev) =>
-          prev.map((m) =>
-            m.id === payload.id
-              ? {
-                  ...(m as any),
-
-                  // ensure fields reflect server copy if needed
-
-                  sentAt: payload.sentAt,
-                }
-              : m
-          )
-        );
-      }
+      if (!selectedChatId || payload?.chatId !== selectedChatId) return;
+      setConversation((prev) => {
+        // Replace optimistic if present; otherwise ignore if already appended by 'chat:message'
+        const idx = prev.findIndex((m) => (m as any).id === payload.id);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        next[idx] = { ...(next[idx] as any), sentAt: payload.sentAt };
+        next.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+        return next;
+      });
     }
 
     function onTeamMessage(payload: any) {
-      if (selectedTeamId && payload?.teamId === selectedTeamId) {
-        setConversation((prev) => [
-          ...prev,
+      if (!selectedTeamId || payload?.teamId !== selectedTeamId) return;
 
-          {
+      setConversation((prev) => {
+        // Replace optimistic temp message if it exists, otherwise append once
+        const idx = prev.findIndex((m) => (m as any).id === payload.id);
+        const next = [...prev];
+        if (idx !== -1) {
+          next[idx] = {
             id: payload.id,
-
             teamId: payload.teamId,
-
             content: payload.content,
-
             sentAt: payload.sentAt,
-
             sender: payload.sender,
-          } as TeamMessage,
-        ]);
-      }
+          } as TeamMessage;
+        } else {
+          next.push({
+            id: payload.id,
+            teamId: payload.teamId,
+            content: payload.content,
+            sentAt: payload.sentAt,
+            sender: payload.sender,
+          } as TeamMessage);
+        }
+        next.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+        return next;
+      });
     }
 
     socket.on("chat:message", onChatMessage);
@@ -678,25 +702,28 @@ export default function ChatPage() {
 
         const saved = res.data;
 
-        // replace temp if ids differ
-
-        setConversation((prev) =>
-          prev.map((m) =>
+        setConversation((prev) => {
+          // If real message already arrived via socket, drop the temp
+          const hasReal = prev.some((m) => (m as any).id === saved.id);
+          if (hasReal) {
+            const filtered = prev.filter((m) => (m as any).id !== tempId);
+            filtered.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+            return filtered;
+          }
+          const mapped = prev.map((m) =>
             (m as any).id === tempId
               ? ({
                   id: saved.id,
-
                   chatId: saved.chatId,
-
                   content: saved.content,
-
                   sentAt: saved.sentAt,
-
                   sender: saved.sender,
                 } as DirectMessage)
               : m
-          )
-        );
+          );
+          mapped.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+          return mapped;
+        });
       } else if (activeTab === "teams" && selectedTeamId) {
         const tempId = `temp-${Date.now()}`;
 
@@ -720,23 +747,28 @@ export default function ChatPage() {
 
         const saved = res.data;
 
-        setConversation((prev) =>
-          prev.map((m) =>
+        setConversation((prev) => {
+          // If real message already arrived via socket, drop the temp
+          const hasReal = prev.some((m) => (m as any).id === saved.id);
+          if (hasReal) {
+            const filtered = prev.filter((m) => (m as any).id !== tempId);
+            filtered.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+            return filtered;
+          }
+          const mapped = prev.map((m) =>
             (m as any).id === tempId
               ? ({
                   id: saved.id,
-
                   teamId: saved.teamId,
-
                   content: saved.content,
-
                   sentAt: saved.sentAt,
-
                   sender: saved.sender,
                 } as TeamMessage)
               : m
-          )
-        );
+          );
+          mapped.sort((a: any, b: any) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+          return mapped;
+        });
       }
     } catch (e: any) {
       setError(e?.message || "Failed to send message");
@@ -1499,6 +1531,9 @@ export default function ChatPage() {
                       fontWeight: 800,
                       fontSize: 18,
                       cursor: selectedTeamId ? "pointer" : selectedChatId ? "pointer" : "default",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                     onClick={async () => {
                       if (selectedChatId) {
@@ -1539,6 +1574,36 @@ export default function ChatPage() {
                   >
                     {selectedHeader.title}
                   </div>
+                  <div style={{ flex: 1 }} />
+
+                  {selectedTeamId && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const shareUrl = `${window.location.origin}/team-invite/${encodeURIComponent(selectedTeamId)}`;
+                            if ((navigator as any).share) {
+                              await (navigator as any).share({ title: selectedHeader?.title, url: shareUrl });
+                            } else {
+                              await navigator.clipboard.writeText(shareUrl);
+                              alert('Invite link copied');
+                            }
+                          } catch {}
+                        }}
+                        title="Share team"
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          background: "#fff",
+                          borderRadius: 6,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                      >
+                        Share
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div
@@ -1612,6 +1677,9 @@ export default function ChatPage() {
                     display: "flex",
                     gap: 10,
                     background: "#f5f6f6",
+                  paddingBottom: isMobile
+                    ? "calc(env(safe-area-inset-bottom, 0px) + 64px)"
+                    : 12,
                   }}
                 >
                   <input

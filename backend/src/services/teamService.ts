@@ -468,6 +468,39 @@ export class TeamService {
   }
 
   /**
+   * Join a team directly (used for invite links). Idempotent.
+   */
+  static async joinTeamDirect(userId: string, teamId: string) {
+    try {
+      const team = await prisma.team.findUnique({ where: { id: teamId } });
+      if (!team) {
+        throw new NotFoundError('Team not found');
+      }
+
+      const existing = await prisma.teamMember.findUnique({
+        where: { userId_teamId: { userId, teamId } },
+      });
+
+      if (existing) {
+        // Ensure status is ACCEPTED for existing membership
+        if (existing.status !== 'ACCEPTED') {
+          await prisma.teamMember.update({ where: { id: existing.id }, data: { status: 'ACCEPTED' } });
+        }
+        return { joined: false, alreadyMember: true };
+      }
+
+      await prisma.teamMember.create({
+        data: { userId, teamId, status: 'ACCEPTED', isAdmin: false },
+      });
+
+      return { joined: true };
+    } catch (error) {
+      logger.error(`Error joining team directly ${teamId} by ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Request to join a team
    */
   static async requestToJoinTeam(userId: string, teamId: string) {

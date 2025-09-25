@@ -481,6 +481,18 @@ class ApiService {
     }
   }
 
+  async joinTeamDirect(teamId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>(`/teams/${encodeURIComponent(teamId)}/join-direct`, {
+        method: 'POST'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error joining team directly:', error);
+      throw error;
+    }
+  }
+
   async getTeamById(teamId: string): Promise<ApiResponse> {
     try {
       const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}`);

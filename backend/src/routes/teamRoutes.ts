@@ -154,6 +154,8 @@ router.delete('/:teamId', validateRequest(teamIdParamSchema), TeamController.del
 
 // Join team and team members endpoints
 router.post('/:teamId/join', validateRequest(teamIdParamSchema), TeamController.requestToJoinTeam);
+// Direct join (invite link) - requires auth but no admin approval
+router.post('/:teamId/join-direct', validateRequest(teamIdParamSchema), TeamController.joinTeamDirect);
 router.get('/:teamId/members', validateRequest(teamIdParamSchema), TeamController.getTeamMembers);
 
 // Member management endpoints
