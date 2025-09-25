@@ -21,6 +21,9 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
   const [highlightIdx, setHighlightIdx] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const cacheRef = useRef<{ users?: any[]; teams?: any[]; tournaments?: any[]; games?: any[] }>({});
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const currentUserId = apiService.getUserIdFromToken();
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
 
   // Close on outside click
   useEffect(() => {
@@ -34,27 +37,53 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  // Load friends once to know which users are already friends
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const friends = await apiService.listFriends();
+        if (!mounted) return;
+        const ids = new Set<string>((friends || []).map((f: any) => f.user_id));
+        setFriendIds(ids);
+      } catch {
+        // ignore if unauthenticated
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [] as SearchResult[];
     const users = (cacheRef.current.users || [])
-      .filter((u: any) => (u.displayName || '').toLowerCase().includes(q) || (u.location || '').toLowerCase().includes(q))
+      .filter((u: any) => u.user_id !== currentUserId)
+      .filter((u: any) =>
+        (u.displayName || '').toLowerCase().includes(q) ||
+        (u.location || '').toLowerCase().includes(q) ||
+        (u.user_id || '').toLowerCase().includes(q)
+      )
       .slice(0, 5)
       .map((u: any) => ({
         id: u.user_id,
-        label: u.displayName,
-        subLabel: u.location,
+        label: u.displayName || u.user_id,
+        subLabel: u.location ? `${u.location} • ${u.user_id}` : u.user_id,
         kind: 'user' as const,
         navigateTo: `/users/${u.user_id}`,
       }));
 
     const teams = (cacheRef.current.teams || [])
-      .filter((t: any) => (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q) || (t.gameName || t.game?.name || '').toLowerCase().includes(q))
+      .filter((t: any) =>
+        (t.title || '').toLowerCase().includes(q) ||
+        (t.description || '').toLowerCase().includes(q) ||
+        (t.gameName || t.game?.name || '').toLowerCase().includes(q) ||
+        (t.id || '').toLowerCase().includes(q)
+      )
       .slice(0, 5)
       .map((t: any) => ({
         id: t.id,
         label: t.title,
-        subLabel: t.gameName || t.game?.name,
+        subLabel: (t.gameName || t.game?.name) ? `${t.gameName || t.game?.name} • ${t.id}` : t.id,
         kind: 'team' as const,
         navigateTo: `/chat?teamId=${encodeURIComponent(t.id)}`,
       }));
@@ -84,7 +113,7 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
     return [...users, ...teams, ...tournaments, ...games].slice(0, 12);
   }, [query]);
 
-  // Debounced loader: load datasets once per session (or on demand)
+  // Debounced loader: fetch search results using backend filtering for users and public teams
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
@@ -97,44 +126,36 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
     const handle = setTimeout(async () => {
       try {
         setIsLoading(true);
-        // If not cached, fetch in parallel
-        const promises: Array<Promise<any>> = [];
-        if (!cacheRef.current.users) promises.push(apiService.listUsers({ page: 1, limit: 200 }));
-        if (!cacheRef.current.teams) promises.push(apiService.getPublicTeams({ page: 1, limit: 200 }));
-        if (!cacheRef.current.tournaments) promises.push(apiService.getTournaments());
-        if (!cacheRef.current.games) promises.push(apiService.getGames());
+        const q = query.trim();
+        // Always fetch fresh filtered users and public teams for the current query
+        const [usersRes, teamsRes, tournamentsRes, gamesRes] = await Promise.allSettled([
+          apiService.listUsers({ page: 1, limit: 50, search: q }),
+          // Prefer server-side search for teams if available
+          apiService.getAllTeams({ page: 1, limit: 50, search: q, isPublic: true }),
+          cacheRef.current.tournaments ? Promise.resolve({ data: cacheRef.current.tournaments } as any) : apiService.getTournaments(),
+          cacheRef.current.games ? Promise.resolve({ data: cacheRef.current.games } as any) : apiService.getGames(),
+        ]);
 
-        if (promises.length > 0) {
-          const resultsArr = await Promise.allSettled(promises);
-          // Assign back in order attempted
-          let idx = 0;
-          if (!cacheRef.current.users) {
-            const r = resultsArr[idx++];
-            if (r.status === 'fulfilled') {
-              const list = Array.isArray(r.value) ? r.value : (r.value?.users || r.value?.data || r.value?.data?.users || r.value?.data?.data || []);
-              cacheRef.current.users = Array.isArray(list) ? list : [];
-            }
-          }
-          if (!cacheRef.current.teams) {
-            const r = resultsArr[idx++];
-            if (r.status === 'fulfilled') {
-              const list = (r.value?.data?.teams) || r.value?.teams || [];
-              cacheRef.current.teams = Array.isArray(list) ? list : [];
-            }
-          }
-          if (!cacheRef.current.tournaments) {
-            const r = resultsArr[idx++];
-            if (r.status === 'fulfilled') {
-              const list = r.value?.data || r.value?.tournaments || [];
-              cacheRef.current.tournaments = Array.isArray(list) ? list : [];
-            }
-          }
-          if (!cacheRef.current.games) {
-            const r = resultsArr[idx++];
-            if (r.status === 'fulfilled') {
-              cacheRef.current.games = Array.isArray(r.value) ? r.value : (r.value?.data || []);
-            }
-          }
+        // Normalize and cache datasets
+        if (usersRes.status === 'fulfilled') {
+          const val: any = usersRes.value;
+          // listUsers can return array or { users }
+          const list = Array.isArray(val) ? val : (val?.users || val?.data || val?.data?.users || []);
+          cacheRef.current.users = Array.isArray(list) ? list : [];
+        }
+        if (teamsRes.status === 'fulfilled') {
+          const val: any = teamsRes.value;
+          const list = (val?.data?.data) || (val?.data?.teams) || val?.teams || val?.data || [];
+          cacheRef.current.teams = Array.isArray(list) ? list : [];
+        }
+        if (tournamentsRes.status === 'fulfilled' && !cacheRef.current.tournaments) {
+          const val: any = tournamentsRes.value;
+          const list = val?.data || val?.tournaments || [];
+          cacheRef.current.tournaments = Array.isArray(list) ? list : [];
+        }
+        if (gamesRes.status === 'fulfilled' && !cacheRef.current.games) {
+          const val: any = gamesRes.value;
+          cacheRef.current.games = Array.isArray(val) ? val : (val?.data || []);
         }
 
         if (!active) return;
@@ -207,7 +228,7 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => { if (query.trim().length >= 2) setOpen(true); }}
           onKeyDown={onKeyDown}
-          placeholder="Search players, teams, tournaments, games..."
+          placeholder="Search players (name/id), public teams, tournaments, games..."
           className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         {isLoading && (
@@ -241,12 +262,57 @@ export const GlobalSearch: React.FC<{ className?: string }> = ({ className }) =>
                       <div className="text-xs text-gray-500 truncate">{item.subLabel}</div>
                     )}
                   </div>
-                  <span className="ml-auto text-[10px] uppercase tracking-wide text-gray-400">{item.kind}</span>
+                  <div className="ml-auto flex items-center gap-2">
+                    {item.kind === 'user' && item.id !== currentUserId && (
+                      friendIds.has(item.id) ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpen(false); navigate(`/chat?friendId=${encodeURIComponent(item.id)}`); }}
+                          className="text-[11px] px-2 py-1 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                        >
+                          Message
+                        </button>
+                      ) : (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setActionLoading(`user:${item.id}`);
+                            try {
+                              await apiService.sendFriendRequest(item.id);
+                            } finally {
+                              setActionLoading(null);
+                            }
+                          }}
+                          disabled={actionLoading === `user:${item.id}`}
+                          className="text-[11px] px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          {actionLoading === `user:${item.id}` ? 'Sending…' : 'Send request'}
+                        </button>
+                      )
+                    )}
+                    {item.kind === 'team' && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setActionLoading(`team:${item.id}`);
+                          try {
+                            await apiService.requestToJoinTeam(item.id);
+                          } finally {
+                            setActionLoading(null);
+                          }
+                        }}
+                        disabled={actionLoading === `team:${item.id}`}
+                        className="text-[11px] px-2 py-1 rounded border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50"
+                      >
+                        {actionLoading === `team:${item.id}` ? 'Requesting…' : 'Request to join'}
+                      </button>
+                    )}
+                    <span className="text-[10px] uppercase tracking-wide text-gray-400">{item.kind}</span>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
-          <div className="px-4 py-2 bg-gray-50 text-[11px] text-gray-500">Press Enter to open • ESC to close</div>
+          <div className="px-4 py-2 bg-gray-50 text-[11px] text-gray-500 hidden md:block">Press Enter to open • ESC to close</div>
         </div>
       )}
     </div>
