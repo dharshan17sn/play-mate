@@ -255,8 +255,41 @@ const TeamMessagingPage: React.FC = () => {
                                 )}
                             </div>
                             <h2 className="text-xl font-semibold text-gray-900 mb-2">{selectedTeam.title}</h2>
-                            {/* Mobile actions */}
-                            <div className="flex items-center justify-center space-x-3 mt-2">
+                        </div>
+
+                        {/* Game Info */}
+                        <div className="bg-white p-4 border-b border-gray-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">Game</p>
+                                    <p className="text-sm text-gray-600">{selectedTeam.gameName || 'No game specified'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="bg-white p-4 border-b border-gray-200">
+                            <div className="flex items-start space-x-3">
+                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900 mb-1">Description</p>
+                                    <p className="text-sm text-gray-600">{selectedTeam.description || 'No description available'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Mobile actions - moved below description, above members */}
+                        <div className="bg-white px-4 py-3 border-b border-gray-200">
+                            <div className="flex items-center justify-center space-x-3">
                                 <button
                                     onClick={async () => {
                                         try {
@@ -292,36 +325,6 @@ const TeamMessagingPage: React.FC = () => {
                                 >
                                     Delete / Exit
                                 </button>
-                            </div>
-                        </div>
-
-                        {/* Game Info */}
-                        <div className="bg-white p-4 border-b border-gray-200">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-gray-900">Game</p>
-                                    <p className="text-sm text-gray-600">{selectedTeam.gameName || 'No game specified'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        <div className="bg-white p-4 border-b border-gray-200">
-                            <div className="flex items-start space-x-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-900 mb-1">Description</p>
-                                    <p className="text-sm text-gray-600">{selectedTeam.description || 'No description available'}</p>
-                                </div>
                             </div>
                         </div>
 
@@ -416,32 +419,76 @@ const TeamMessagingPage: React.FC = () => {
                             <p className="text-xs text-gray-400 mt-1">Join a team to start group conversations</p>
                         </div>
                     ) : (
-                        <div className="p-4 space-y-2">
+                        <div className="p-4 space-y-3">
                             {teams.map((team) => (
-                                <button
-                                    key={team.id}
-                                    onClick={() => selectTeam(team)}
-                                    className="w-full p-3 text-left hover:bg-gray-50 rounded-lg flex items-center space-x-3"
-                                >
-                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-                                        <span className="text-gray-600 font-semibold">{team.title[0]?.toUpperCase()}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{team.title}</p>
-                                        <p className="text-xs text-gray-500 truncate">{team.description || 'No description'}</p>
-                                        <div className="flex items-center space-x-2 mt-1">
-                                            <span className="text-xs text-gray-500">{team.gameName || 'No game'}</span>
-                                            {team.isPublic ? (
-                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Public</span>
-                                            ) : (
-                                                <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">Private</span>
-                                            )}
+                                <div key={team.id} className="rounded-lg border border-gray-100">
+                                    <button
+                                        onClick={() => selectTeam(team)}
+                                        className="w-full p-3 text-left hover:bg-gray-50 rounded-t-lg flex items-center space-x-3"
+                                    >
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                                            <span className="text-gray-600 font-semibold">{team.title[0]?.toUpperCase()}</span>
                                         </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">{team.title}</p>
+                                            <p className="text-xs text-gray-500 truncate">{team.description || 'No description'}</p>
+                                            <div className="flex items-center space-x-2 mt-1">
+                                                <span className="text-xs text-gray-500">{team.gameName || 'No game'}</span>
+                                                {team.isPublic ? (
+                                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Public</span>
+                                                ) : (
+                                                    <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">Private</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                    <div className="flex items-center justify-end gap-2 px-3 py-2 bg-white rounded-b-lg border-t border-gray-100">
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    await apiService.leaveTeam(team.id);
+                                                    setTeams(prev => prev.filter(t => t.id !== team.id));
+                                                    if (selectedTeam?.id === team.id) {
+                                                        setSelectedTeam(null);
+                                                        setMessages([]);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to exit team', err);
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 text-xs border border-gray-300 rounded-md text-gray-800 hover:bg-gray-50"
+                                        >
+                                            Exit
+                                        </button>
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!confirm('Delete this team? If you are creator, it deletes for everyone. Otherwise it removes only for you.')) return;
+                                                try {
+                                                    try {
+                                                        await apiService.deleteTeam(team.id);
+                                                    } catch (_) {
+                                                        await apiService.leaveTeam(team.id);
+                                                    }
+                                                    setTeams(prev => prev.filter(t => t.id !== team.id));
+                                                    if (selectedTeam?.id === team.id) {
+                                                        setSelectedTeam(null);
+                                                        setMessages([]);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Failed to delete/exit team', err);
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 text-xs border border-red-300 text-red-600 rounded-md hover:bg-red-50"
+                                        >
+                                            Delete / Exit
+                                        </button>
                                     </div>
-                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     )}

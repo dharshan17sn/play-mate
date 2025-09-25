@@ -1937,6 +1937,73 @@ export default function ChatPage() {
                   );
                 })()}
 
+                {/* Actions: Exit and Delete/Exit (mobile team info - below description) */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    onClick={async () => {
+                      if (!selectedTeamId) return;
+                      try {
+                        await apiService.leaveTeam(selectedTeamId);
+                        setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                        setIsTeamInfoOpen(false);
+                        setSelectedTeamId(null);
+                        setSelectedChatId(null);
+                        setActiveTab('teams');
+                        navigate('/chat', { replace: true });
+                      } catch (e: any) {
+                        setError(e?.message || "Failed to leave team");
+                      }
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      fontSize: 13,
+                      border: "1px solid #d1d5db",
+                      borderRadius: 6,
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Exit team
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!selectedTeamId) return;
+                      if (!confirm('Are you sure you want to delete this team?')) return;
+                      try {
+                        try {
+                          await apiService.deleteTeam(selectedTeamId);
+                        } catch (_) {
+                          await apiService.leaveTeam(selectedTeamId);
+                        }
+                        setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                        setIsTeamInfoOpen(false);
+                        setSelectedTeamId(null);
+                        setSelectedChatId(null);
+                        setActiveTab('teams');
+                        navigate('/chat', { replace: true });
+                      } catch (e: any) {
+                        setError(e?.message || "Failed to delete/exit team");
+                      }
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      fontSize: 13,
+                      border: "1px solid #fecaca",
+                      color: "#dc2626",
+                      borderRadius: 6,
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete / Exit
+                  </button>
+                </div>
+
                 <div style={{ marginTop: 8, fontWeight: 700 }}>Members</div>
 
                 <div>
@@ -2507,68 +2574,6 @@ export default function ChatPage() {
                           );
                         })()}
 
-                        {/* Actions: Exit and Delete/Exit */}
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            marginTop: 8,
-                          }}
-                        >
-                          <button
-                            onClick={async () => {
-                              if (!selectedTeamId) return;
-                              try {
-                                await apiService.leaveTeam(selectedTeamId);
-                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
-                                setIsTeamInfoOpen(false);
-                                setSelectedTeamId(null);
-                              } catch (e: any) {
-                                setError(e?.message || "Failed to leave team");
-                              }
-                            }}
-                            style={{
-                              padding: "6px 10px",
-                              fontSize: 13,
-                              border: "1px solid #d1d5db",
-                              borderRadius: 6,
-                              background: "#fff",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Exit team
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!selectedTeamId) return;
-                              if (!confirm('Are you sure you want to delete this team?')) return;
-                              try {
-                                try {
-                                  await apiService.deleteTeam(selectedTeamId);
-                                } catch (_) {
-                                  await apiService.leaveTeam(selectedTeamId);
-                                }
-                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
-                                setIsTeamInfoOpen(false);
-                                setSelectedTeamId(null);
-                              } catch (e: any) {
-                                setError(e?.message || "Failed to delete/exit team");
-                              }
-                            }}
-                            style={{
-                              padding: "6px 10px",
-                              fontSize: 13,
-                              border: "1px solid #fecaca",
-                              color: "#dc2626",
-                              borderRadius: 6,
-                              background: "#fff",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete / Exit
-                          </button>
-                        </div>
-
                         <div style={{ color: "#374151" }}>
                           Game:{" "}
                           {teamDetails.gameName || teamDetails.game?.name || "—"}
@@ -2675,6 +2680,68 @@ export default function ChatPage() {
                             </div>
                           );
                         })()}
+
+                        {/* Actions: Exit and Delete/Exit (moved below description) */}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          <button
+                            onClick={async () => {
+                              if (!selectedTeamId) return;
+                              try {
+                                await apiService.leaveTeam(selectedTeamId);
+                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                                setIsTeamInfoOpen(false);
+                                setSelectedTeamId(null);
+                              } catch (e: any) {
+                                setError(e?.message || "Failed to leave team");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 13,
+                              border: "1px solid #d1d5db",
+                              borderRadius: 6,
+                              background: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Exit team
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!selectedTeamId) return;
+                              if (!confirm('Are you sure you want to delete this team?')) return;
+                              try {
+                                try {
+                                  await apiService.deleteTeam(selectedTeamId);
+                                } catch (_) {
+                                  await apiService.leaveTeam(selectedTeamId);
+                                }
+                                setTeams((prev) => prev.filter((t) => t.id !== selectedTeamId));
+                                setIsTeamInfoOpen(false);
+                                setSelectedTeamId(null);
+                              } catch (e: any) {
+                                setError(e?.message || "Failed to delete/exit team");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: 13,
+                              border: "1px solid #fecaca",
+                              color: "#dc2626",
+                              borderRadius: 6,
+                              background: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Delete / Exit
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div
