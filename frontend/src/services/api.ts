@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://localhost:3000/api/v1';
+const SERVER_BASE_URL = 'http://localhost:3000';
 
 export interface LoginRequest {
   identifier: string;
@@ -231,7 +232,14 @@ class ApiService {
 
   // Profile endpoints
   async getProfile(): Promise<ApiResponse> {
-    return this.requestWithAuth<ApiResponse>('/users/profile');
+    const result = await this.requestWithAuth<ApiResponse>('/users/profile');
+    
+    // Fix photo URL to include full server base URL (only if it's a relative URL)
+    if (result.data && result.data.photo && result.data.photo.startsWith('/')) {
+      result.data.photo = `${SERVER_BASE_URL}${result.data.photo}`;
+    }
+    
+    return result;
   }
 
   async updateProfile(data: any): Promise<ApiResponse> {
@@ -251,6 +259,7 @@ class ApiService {
     console.log('updateProfile - Request headers:', headers);
 
     try {
+      console.log('updateProfile - About to make fetch request...');
       const response = await fetch(url, {
         method: 'PUT',
         headers,
@@ -273,6 +282,10 @@ class ApiService {
       return responseData;
     } catch (error) {
       console.error('updateProfile - API request failed:', error);
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('updateProfile - Network error - check if backend is running and CORS is configured');
+        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.');
+      }
       console.log('=== API SERVICE UPDATE PROFILE END ===');
       throw error;
     }
@@ -324,13 +337,39 @@ class ApiService {
     if (params?.displayName) query.set('displayName', params.displayName);
     const endpoint = `/users${query.toString() ? `?${query.toString()}` : ''}`;
     const response = await this.request<ApiResponse>(endpoint);
-    if (Array.isArray(response.data)) return response.data as UserListItem[];
-    return (response.data as any) || [];
+    
+    // Fix photo URLs for users
+    const fixPhotoUrls = (users: any[]) => {
+      return users.map((user: any) => {
+        if (user.photo) {
+          user.photo = `${SERVER_BASE_URL}${user.photo}`;
+        }
+        return user;
+      });
+    };
+    
+    if (Array.isArray(response.data)) {
+      return fixPhotoUrls(response.data) as UserListItem[];
+    }
+    
+    const data = (response.data as any) || [];
+    if (data.users && Array.isArray(data.users)) {
+      data.users = fixPhotoUrls(data.users);
+    }
+    
+    return data;
   }
 
   async getUserById(userId: string): Promise<UserProfile> {
     const response = await this.request<ApiResponse>(`/users/${encodeURIComponent(userId)}`);
-    return response.data as UserProfile;
+    const userProfile = response.data as UserProfile;
+    
+    // Fix photo URL (only if it's a relative URL)
+    if (userProfile.photo && userProfile.photo.startsWith('/')) {
+      userProfile.photo = `${SERVER_BASE_URL}${userProfile.photo}`;
+    }
+    
+    return userProfile;
   }
 
   // Friends API
@@ -356,7 +395,15 @@ class ApiService {
 
   async listFriends(): Promise<{ user_id: string; displayName: string; photo?: string }[]> {
     const res = await this.requestWithAuth<ApiResponse>('/friends');
-    return (res.data as any[]) || [];
+    const friends = (res.data as any[]) || [];
+    
+    // Fix photo URLs for friends
+    return friends.map((friend: any) => {
+        if (friend.photo) {
+          friend.photo = `${SERVER_BASE_URL}${friend.photo}`;
+        }
+      return friend;
+    });
   }
 
   // Chat API
@@ -365,7 +412,19 @@ class ApiService {
   }
 
   async getUserChats(): Promise<ApiResponse> {
-    return this.requestWithAuth<ApiResponse>('/chat/chats');
+    const response = await this.requestWithAuth<ApiResponse>('/chat/chats');
+    
+    // Fix photo URLs for chat participants
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map((chat: any) => {
+        if (chat.participant && chat.participant.photo) {
+          chat.participant.photo = `${SERVER_BASE_URL}${chat.participant.photo}`;
+        }
+        return chat;
+      });
+    }
+    
+    return response;
   }
 
   async getChatMessages(chatId: string, limit?: number, offset?: number): Promise<ApiResponse> {
@@ -410,7 +469,22 @@ class ApiService {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.gameName) query.set('gameName', params.gameName);
     const endpoint = `/teams/public${query.toString() ? `?${query.toString()}` : ''}`;
-    return this.request<ApiResponse>(endpoint);
+    const response = await this.request<ApiResponse>(endpoint);
+    
+    // Fix photo URLs for teams
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map((team: any) => {
+        if (team.photo) {
+          team.photo = `${SERVER_BASE_URL}${team.photo}`;
+        }
+        if (team.creator && team.creator.photo) {
+          team.creator.photo = `${SERVER_BASE_URL}${team.creator.photo}`;
+        }
+        return team;
+      });
+    }
+    
+    return response;
   }
 
   async getAllTeams(params?: { page?: number; limit?: number; search?: string; isPublic?: boolean }): Promise<ApiResponse> {
@@ -420,7 +494,22 @@ class ApiService {
     if (params?.search) query.set('search', params.search);
     if (params?.isPublic !== undefined) query.set('isPublic', String(params.isPublic));
     const endpoint = `/teams/all${query.toString() ? `?${query.toString()}` : ''}`;
-    return this.requestWithAuth<ApiResponse>(endpoint);
+    const response = await this.requestWithAuth<ApiResponse>(endpoint);
+    
+    // Fix photo URLs for teams
+    if (response.data && Array.isArray(response.data)) {
+      response.data = response.data.map((team: any) => {
+        if (team.photo) {
+          team.photo = `${SERVER_BASE_URL}${team.photo}`;
+        }
+        if (team.creator && team.creator.photo) {
+          team.creator.photo = `${SERVER_BASE_URL}${team.creator.photo}`;
+        }
+        return team;
+      });
+    }
+    
+    return response;
   }
 
   // Get user profile
@@ -496,6 +585,26 @@ class ApiService {
   async getTeamById(teamId: string): Promise<ApiResponse> {
     try {
       const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}`);
+      
+      // Fix photo URLs for team and team members
+      if (response.data) {
+        const team = response.data as any;
+        if (team.photo) {
+          team.photo = `${SERVER_BASE_URL}${team.photo}`;
+        }
+        if (team.creator && team.creator.photo) {
+          team.creator.photo = `${SERVER_BASE_URL}${team.creator.photo}`;
+        }
+        if (team.members && Array.isArray(team.members)) {
+          team.members = team.members.map((member: any) => {
+            if (member.user && member.user.photo) {
+              member.user.photo = `${SERVER_BASE_URL}${member.user.photo}`;
+            }
+            return member;
+          });
+        }
+      }
+      
       return response;
     } catch (error) {
       console.error('Error getting team by ID:', error);
@@ -536,6 +645,17 @@ class ApiService {
   async getTeamMembers(teamId: string): Promise<ApiResponse> {
     try {
       const response = await this.requestWithAuth<ApiResponse>(`/teams/${teamId}/members`);
+      
+      // Fix photo URLs for team members
+      if (response.data && Array.isArray(response.data)) {
+        response.data = response.data.map((member: any) => {
+        if (member.photo) {
+          member.photo = `${SERVER_BASE_URL}${member.photo}`;
+        }
+          return member;
+        });
+      }
+      
       return response;
     } catch (error) {
       console.error('Error getting team members:', error);
@@ -734,6 +854,20 @@ class ApiService {
       if (params?.gameId) query.set('gameId', params.gameId);
       const endpoint = `/tournaments${query.toString() ? `?${query.toString()}` : ''}`;
       const response = await this.requestWithAuth<ApiResponse>(endpoint);
+      
+      // Fix photo URLs for tournaments
+      if (response.data && Array.isArray(response.data)) {
+        response.data = response.data.map((tournament: any) => {
+          if (tournament.photo) {
+            tournament.photo = `${SERVER_BASE_URL}${tournament.photo}`;
+          }
+          if (tournament.creator && tournament.creator.photo) {
+            tournament.creator.photo = `${SERVER_BASE_URL}${tournament.creator.photo}`;
+          }
+          return tournament;
+        });
+      }
+      
       return response;
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -744,6 +878,34 @@ class ApiService {
   async getTournamentById(tournamentId: string): Promise<ApiResponse> {
     try {
       const response = await this.requestWithAuth<ApiResponse>(`/tournaments/${tournamentId}`);
+      
+      // Fix photo URLs for tournament and related entities
+      if (response.data) {
+        const tournament = response.data as any;
+        if (tournament.photo) {
+          tournament.photo = `${SERVER_BASE_URL}${tournament.photo}`;
+        }
+        if (tournament.creator && tournament.creator.photo) {
+          tournament.creator.photo = `${SERVER_BASE_URL}${tournament.creator.photo}`;
+        }
+        if (tournament.teams && Array.isArray(tournament.teams)) {
+          tournament.teams = tournament.teams.map((team: any) => {
+            if (team.photo) {
+              team.photo = `${SERVER_BASE_URL}${team.photo}`;
+            }
+            if (team.members && Array.isArray(team.members)) {
+              team.members = team.members.map((member: any) => {
+                if (member.user && member.user.photo) {
+                  member.user.photo = `${SERVER_BASE_URL}${member.user.photo}`;
+                }
+                return member;
+              });
+            }
+            return team;
+          });
+        }
+      }
+      
       return response;
     } catch (error) {
       console.error('Error getting tournament by ID:', error);
@@ -814,6 +976,90 @@ class ApiService {
       return response;
     } catch (error) {
       console.error('Error getting tournament teams:', error);
+      throw error;
+    }
+  }
+
+  // Contact API
+  async submitContact(data: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+    gameIdea?: string;
+  }): Promise<ApiResponse> {
+    return this.request<ApiResponse>('/contact', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Photo upload API
+  async uploadPhoto(file: File): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const token = this.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      console.log('Uploading photo:', file.name, 'Size:', file.size, 'Type:', file.type);
+      console.log('Upload URL:', `${API_BASE_URL}/users/upload-photo`);
+      console.log('Token exists:', !!token);
+
+      const response = await fetch(`${API_BASE_URL}/users/upload-photo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      console.log('Upload response status:', response.status);
+      console.log('Upload response headers:', response.headers);
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload photo';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('Upload successful:', result);
+      console.log('Raw photoUrl from backend:', result.data?.photoUrl);
+      console.log('Raw photo from backend:', result.data?.photo);
+      
+      // Fix photo URL to include full server base URL
+      if (result.data && result.data.photoUrl) {
+        result.data.photoUrl = `${SERVER_BASE_URL}${result.data.photoUrl}`;
+        console.log('Fixed photo URL:', result.data.photoUrl);
+      } else {
+        console.error('No photoUrl found in response data:', result.data);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      throw error;
+    }
+  }
+
+  async removePhoto(): Promise<ApiResponse> {
+    try {
+      const response = await this.requestWithAuth<ApiResponse>('/users/remove-photo', {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error removing photo:', error);
       throw error;
     }
   }

@@ -42,7 +42,7 @@ const DashboardPage: React.FC = () => {
                 // Map team join requests to consistent format
                 const teamRequests = ((teamReqs as any).data as any[]) || [];
                 console.log('API team requests:', teamRequests);
-                setTeamJoinRequests(teamRequests.map(req => {
+                const mappedTeamRequests = teamRequests.map(req => {
                     const createdAt = req.sentAt ? new Date(req.sentAt).toISOString() :
                         req.createdAt ? new Date(req.createdAt).toISOString() :
                             new Date().toISOString();
@@ -53,10 +53,14 @@ const DashboardPage: React.FC = () => {
                         fromUser: req.fromUser || { user_id: req.fromUserId, displayName: req.fromUserDisplayName },
                         team: req.team || { title: req.teamTitle }
                     };
-                }));
+                });
+                // Sort team join requests by creation date (most recent first)
+                setTeamJoinRequests(mappedTeamRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
                 setFriends(fr || []);
                 const persistedList = ((persisted as any).data as any[]) || [];
-                setSystemEvents(persistedList.map((n: any) => ({ id: n.id, title: n.data?.title || n.title, startDate: n.data?.startDate, reason: n.message, createdAt: n.createdAt, read: !!n.read })));
+                const mappedSystemEvents = persistedList.map((n: any) => ({ id: n.id, title: n.data?.title || n.title, startDate: n.data?.startDate, reason: n.message, createdAt: n.createdAt, read: !!n.read }));
+                // Sort system events by creation date (most recent first)
+                setSystemEvents(mappedSystemEvents.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
             } catch { }
         };
         load();
@@ -109,6 +113,33 @@ const DashboardPage: React.FC = () => {
         return [...inc, ...out].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [incoming, outgoing]);
 
+    // Unified notifications list sorted by creation date
+    const allNotifications = useMemo(() => {
+        const friendNotifs = friendRequests.map(r => ({
+            id: r.id,
+            type: 'friend' as const,
+            createdAt: r.createdAt,
+            data: r
+        }));
+        
+        const teamNotifs = teamJoinRequests.map(r => ({
+            id: r.id,
+            type: 'team' as const,
+            createdAt: r.createdAt,
+            data: r
+        }));
+        
+        const systemNotifs = systemEvents.map(r => ({
+            id: r.id,
+            type: 'system' as const,
+            createdAt: r.createdAt,
+            data: r
+        }));
+        
+        return [...friendNotifs, ...teamNotifs, ...systemNotifs]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [friendRequests, teamJoinRequests, systemEvents]);
+
     // Badge counts only actionable items (incoming pending), not outgoing
     const pendingFriendCount = incoming.filter(i => i.status === 'PENDING').length;
     const pendingTeamCount = teamJoinRequests.filter(t => t.status === 'PENDING').length;
@@ -146,12 +177,14 @@ const DashboardPage: React.FC = () => {
             setOutgoing(((out as any).data as any[]) || []);
             // Map team join requests to consistent format
             const teamRequests = ((teamReqs as any).data as any[]) || [];
-            setTeamJoinRequests(teamRequests.map(req => ({
+            const mappedTeamRequests = teamRequests.map(req => ({
                 ...req,
                 createdAt: req.sentAt || req.createdAt || new Date().toISOString(),
                 fromUser: req.fromUser || { user_id: req.fromUserId, displayName: req.fromUserDisplayName },
                 team: req.team || { title: req.teamTitle }
-            })));
+            }));
+            // Sort team join requests by creation date (most recent first)
+            setTeamJoinRequests(mappedTeamRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } catch (error) {
             console.error('Failed to handle team join request:', error);
         }
@@ -296,103 +329,85 @@ const DashboardPage: React.FC = () => {
                         {/* Tab Content */}
                         <div className="flex-1 overflow-y-auto">
                             {activeTab === 'notifications' && (
-                                <div className="p-4 space-y-4">
-                                    <div>
-                                        <h5 className="font-medium mb-2">Friend Requests</h5>
-                                        <div className="space-y-2 select-none">
-                                            {friendRequests.map((r) => {
-                                                const isIncoming = r.direction === 'incoming';
-                                                const user = isIncoming ? (r.fromUser || { user_id: r.fromUserId, displayName: r.fromUserDisplayName }) : (r.toUser || { user_id: r.toUserId, displayName: r.toUserDisplayName });
-                                                const initials = (user?.displayName?.[0]?.toUpperCase() || '?');
-                                                // Date/Time hidden per requirements
-                                                return (
-                                                    <div
-                                                        key={r.id}
-                                                        className="relative overflow-hidden rounded-lg border"
-                                                        onPointerDown={() => { /* swipe disabled */ }}
-                                                        onPointerMove={(e) => {
-                                                            if (e.buttons !== 1) return;
-                                                            // swipe disabled
-                                                        }}
-                                                        onPointerUp={() => { /* keep or reset handled by move */ }}
-                                                    >
-                                                        {/* Trailing actions layer */}
-                                                        {/* Trailing actions removed per request */}
-                                                        {/* Foreground content that slides left */}
-                                                        <div
-                                                            className={`relative bg-white p-3 flex items-center justify-between shadow-sm select-none`}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-700">
-                                                                    {initials}
-                                                                </div>
-                                                                <div>
-                                                                    <button
-                                                                        onClick={() => { closeNotificationPanel(); navigate(`/users/${user?.user_id}`); }}
-                                                                        className="text-sm font-semibold text-left text-gray-900 hover:text-blue-600 hover:underline"
-                                                                    >
-                                                                        {user?.displayName || user?.user_id}
-                                                                    </button>
-                                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isIncoming ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>{isIncoming ? 'Incoming' : 'Outgoing'}</span>
-                                                                        {/* no date */}
-                                                                    </div>
-                                                                </div>
+                                <div className="p-4 space-y-2">
+                                    {allNotifications.map((notification) => {
+                                        if (notification.type === 'friend') {
+                                            const r = notification.data;
+                                            const isIncoming = r.direction === 'incoming';
+                                            const user = isIncoming ? (r.fromUser || { user_id: r.fromUserId, displayName: r.fromUserDisplayName }) : (r.toUser || { user_id: r.toUserId, displayName: r.toUserDisplayName });
+                                            const initials = (user?.displayName?.[0]?.toUpperCase() || '?');
+                                            return (
+                                                <div
+                                                    key={`friend-${r.id}`}
+                                                    className="relative overflow-hidden rounded-lg border"
+                                                >
+                                                    <div className="relative bg-white p-3 flex items-center justify-between shadow-sm select-none">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-700">
+                                                                {initials}
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {isIncoming && r.status === 'PENDING' ? (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                await apiService.respondFriendRequest(r.id, 'accept');
-                                                                                const [inc, out, fr] = await Promise.all([
-                                                                                    apiService.listFriendRequests('incoming'),
-                                                                                    apiService.listFriendRequests('outgoing'),
-                                                                                    apiService.listFriends()
-                                                                                ]);
-                                                                                setIncoming(((inc as any).data as any[]) || []);
-                                                                                setOutgoing(((out as any).data as any[]) || []);
-                                                                                setFriends(fr || []);
-                                                                            }}
-                                                                            className="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700"
-                                                                        >
-                                                                            Accept
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                await apiService.respondFriendRequest(r.id, 'decline');
-                                                                                const [inc, out, fr] = await Promise.all([
-                                                                                    apiService.listFriendRequests('incoming'),
-                                                                                    apiService.listFriendRequests('outgoing'),
-                                                                                    apiService.listFriends()
-                                                                                ]);
-                                                                                setIncoming(((inc as any).data as any[]) || []);
-                                                                                setOutgoing(((out as any).data as any[]) || []);
-                                                                                setFriends(fr || []);
-                                                                            }}
-                                                                            className="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
-                                                                        >
-                                                                            Decline
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'PENDING' ? 'bg-yellow-50 text-yellow-800' : r.status === 'ACCEPTED' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                                                                        {r.status}
-                                                                    </span>
-                                                                )}
+                                                            <div>
+                                                                <button
+                                                                    onClick={() => { closeNotificationPanel(); navigate(`/users/${user?.user_id}`); }}
+                                                                    className="text-sm font-semibold text-left text-gray-900 hover:text-blue-600 hover:underline"
+                                                                >
+                                                                    {user?.displayName || user?.user_id}
+                                                                </button>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isIncoming ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>{isIncoming ? 'Friend Request' : 'Friend Request Sent'}</span>
+                                                                    <span className="text-[10px] text-gray-500">{new Date(r.createdAt).toLocaleString()}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {isIncoming && r.status === 'PENDING' ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            await apiService.respondFriendRequest(r.id, 'accept');
+                                                                            const [inc, out, fr] = await Promise.all([
+                                                                                apiService.listFriendRequests('incoming'),
+                                                                                apiService.listFriendRequests('outgoing'),
+                                                                                apiService.listFriends()
+                                                                            ]);
+                                                                            setIncoming(((inc as any).data as any[]) || []);
+                                                                            setOutgoing(((out as any).data as any[]) || []);
+                                                                            setFriends(fr || []);
+                                                                        }}
+                                                                        className="px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700"
+                                                                    >
+                                                                        Accept
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            await apiService.respondFriendRequest(r.id, 'decline');
+                                                                            const [inc, out, fr] = await Promise.all([
+                                                                                apiService.listFriendRequests('incoming'),
+                                                                                apiService.listFriendRequests('outgoing'),
+                                                                                apiService.listFriends()
+                                                                            ]);
+                                                                            setIncoming(((inc as any).data as any[]) || []);
+                                                                            setOutgoing(((out as any).data as any[]) || []);
+                                                                            setFriends(fr || []);
+                                                                        }}
+                                                                        className="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
+                                                                    >
+                                                                        Decline
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'PENDING' ? 'bg-yellow-50 text-yellow-800' : r.status === 'ACCEPTED' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                                    {r.status}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                );
-                                            })}
-                                            {friendRequests.length === 0 && <div className="text-xs text-gray-500">No friend requests</div>}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-medium mb-2">Team Join Requests</h5>
-                                        <div className="space-y-2">
-                                            {teamJoinRequests.map((r) => (
-                                                <div key={r.id} className="p-2 border rounded flex items-center justify-between">
+                                                </div>
+                                            );
+                                        } else if (notification.type === 'team') {
+                                            const r = notification.data;
+                                            return (
+                                                <div key={`team-${r.id}`} className="p-2 border rounded flex items-center justify-between">
                                                     <div>
                                                         <button
                                                             onClick={() => { closeNotificationPanel(); navigate(`/users/${r.fromUser?.user_id || r.fromUserId}`); }}
@@ -403,7 +418,7 @@ const DashboardPage: React.FC = () => {
                                                         <div className="text-xs text-gray-500">
                                                             Wants to join <span className="font-medium">{r.team?.title}</span>
                                                         </div>
-                                                        <div className="text-[11px] text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
+                                                        <div className="text-[10px] text-gray-500">{new Date(r.createdAt).toLocaleString()}</div>
                                                     </div>
                                                     {r.status === 'PENDING' ? (
                                                         <div className="flex gap-1">
@@ -424,37 +439,35 @@ const DashboardPage: React.FC = () => {
                                                         <span className="text-xs text-gray-600">{r.status}</span>
                                                     )}
                                                 </div>
-                                            ))}
-                                            {teamJoinRequests.length === 0 && <div className="text-xs text-gray-500">No team join requests</div>}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-medium mb-2 mt-4">System</h5>
-                                        <div className="space-y-2">
-                                            {systemEvents.map(ev => (
-                                                <div key={ev.id + ev.createdAt} className="p-2 border rounded bg-yellow-50 text-yellow-800 text-xs">
-                                                    {`The tournament "${ev.title}" was automatically removed because its scheduled start time had already passed.`}
+                                            );
+                                        } else if (notification.type === 'system') {
+                                            const ev = notification.data;
+                                            return (
+                                                <div key={`system-${ev.id}`} className="p-2 border rounded bg-yellow-50 text-yellow-800 text-xs">
+                                                    <div className="font-medium mb-1">System Notification</div>
+                                                    <div>{`The tournament "${ev.title}" was automatically removed because its scheduled start time had already passed.`}</div>
+                                                    <div className="text-[10px] text-yellow-600 mt-1">{new Date(ev.createdAt).toLocaleString()}</div>
                                                 </div>
-                                            ))}
-                                            {systemEvents.length === 0 && <div className="text-xs text-gray-500">No system notifications</div>}
-                                            {systemEvents.some(ev => !ev.read) && (
-                                                <div className="flex justify-end">
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await apiService.markNotificationsRead();
-                                                                setSystemEvents(prev => prev.map(ev => ({ ...ev, read: true })));
-                                                            } catch {}
-                                                        }}
-                                                        className="text-[11px] text-blue-700 hover:underline"
-                                                    >
-                                                        Mark system notifications as read
-                                                    </button>
-                                                </div>
-                                            )}
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                    {allNotifications.length === 0 && <div className="text-xs text-gray-500">No notifications</div>}
+                                    {systemEvents.some(ev => !ev.read) && (
+                                        <div className="flex justify-end mt-4">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await apiService.markNotificationsRead();
+                                                        setSystemEvents(prev => prev.map(ev => ({ ...ev, read: true })));
+                                                    } catch {}
+                                                }}
+                                                className="text-[11px] text-blue-700 hover:underline"
+                                            >
+                                                Mark system notifications as read
+                                            </button>
                                         </div>
-                                    </div>
-                                    {/* Outgoing list removed in favor of unified Friend Requests above */}
+                                    )}
                                 </div>
                             )}
 

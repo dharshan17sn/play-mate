@@ -61,7 +61,7 @@ const TournamentEditPage: React.FC = () => {
       setFormData({
         title: tournament.title || '',
         description: tournament.description || '',
-        gameId: tournament.game?.id || '',
+        gameId: tournament.gameId || tournament.game?.name || '',
         photo: tournament.photo || '',
         startDate: formattedDate,
         location: tournament.location || '',
@@ -95,10 +95,7 @@ const TournamentEditPage: React.FC = () => {
       return;
     }
     
-    if (!formData.gameId) {
-      setError('Please select a game');
-      return;
-    }
+    // Game selection is disabled in edit mode, so no validation needed
     
     if (!formData.startDate) {
       setError('Start date is required');
@@ -253,18 +250,17 @@ const TournamentEditPage: React.FC = () => {
                 />
               </div>
 
-              {/* Game Selection */}
+              {/* Game Selection - Read Only */}
               <div>
                 <label htmlFor="gameId" className="block text-sm font-medium text-gray-700 mb-2">
-                  Game <span className="text-red-500">*</span>
+                  Game
                 </label>
                 <select
                   id="gameId"
                   name="gameId"
                   value={formData.gameId}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
                 >
                   <option value="">Select a game</option>
                   {games.map((game) => (
@@ -273,6 +269,7 @@ const TournamentEditPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">Game cannot be changed after tournament creation</p>
               </div>
 
               {/* Number of Players per Team */}
@@ -290,7 +287,7 @@ const TournamentEditPage: React.FC = () => {
                   min="1"
                   max="50"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <p className="mt-1 text-xs text-gray-500">Maximum number of players per team</p>
               </div>
@@ -345,22 +342,45 @@ const TournamentEditPage: React.FC = () => {
                 />
               </div>
 
-              {/* Photo URL */}
+              {/* Photo Upload */}
               <div>
                 <label htmlFor="photo" className="block text-sm font-medium text-gray-700 mb-2">
-                  Photo URL
+                  Tournament Photo
                 </label>
                 <input
-                  type="url"
+                  type="file"
                   id="photo"
                   name="photo"
-                  value={formData.photo}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/tournament-photo.jpg"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const dataUrl = String(reader.result || '');
+                      setFormData(prev => ({ ...prev, photo: dataUrl }));
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
-                <p className="mt-1 text-xs text-gray-500">Optional: URL to tournament photo</p>
+                <p className="mt-1 text-xs text-gray-500">Optional: Upload a tournament image (JPG, PNG)</p>
               </div>
+
+              {/* Preview */}
+              {formData.photo && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Photo Preview</label>
+                  <div className="w-32 h-32 border border-gray-300 rounded-lg overflow-hidden">
+                    <img
+                      src={formData.photo}
+                      alt="Tournament preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

@@ -25,6 +25,7 @@ export default function ProfileCreationPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showToast, setShowToast] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableGames, setAvailableGames] = useState<Game[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,6 +46,16 @@ export default function ProfileCreationPage() {
       try {
         setFetching(true);
         setError('');
+
+        // Check if user is authenticated
+        const token = apiService.getAuthToken();
+        if (!token) {
+          setError('Please log in to access your profile');
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+          return;
+        }
 
         // Fetch user profile
         const profileResponse = await apiService.getProfile();
@@ -116,15 +127,76 @@ export default function ProfileCreationPage() {
     }
   }, [hasPreferredDays]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // For now, we'll just store the file name
-      // In a real app, you'd upload to a server and get a URL
+      try {
+        setError('');
+        
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          setError('File size must be less than 5MB');
+          return;
+        }
+        
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          setError('Please select an image file (JPG, PNG, GIF)');
+          return;
+        }
+        
+        const response = await apiService.uploadPhoto(file);
+        console.log('Photo upload response:', response);
+        if (response.success) {
+          console.log('Setting photo URL:', response.data.photoUrl);
+          setFormData(prev => {
+            const newData = {
+              ...prev,
+              photo: response.data.photoUrl
+            };
+            console.log('Updated formData with photo:', newData);
+            return newData;
+          });
+          setSuccess('Photo uploaded successfully!');
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 2000);
+        }
+      } catch (error: any) {
+        console.error('Photo upload error:', error);
+        if (error.message.includes('authentication token')) {
+          setError('Please log in again to upload photos');
+          // Optionally redirect to login
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        } else {
+          setError(error.message || 'Failed to upload photo');
+        }
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      setError('');
+      await apiService.removePhoto();
       setFormData(prev => ({
         ...prev,
-        photo: file.name
+        photo: ''
       }));
+      setSuccess('Photo removed successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    } catch (error: any) {
+      console.error('Photo remove error:', error);
+      if (error.message.includes('authentication token')) {
+        setError('Please log in again to remove photos');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(error.message || 'Failed to remove photo');
+      }
     }
   };
 
@@ -133,6 +205,7 @@ export default function ProfileCreationPage() {
 
     console.log('=== FRONTEND SUBMISSION START ===');
     console.log('Form data before processing:', formData);
+    console.log('Current photo URL:', formData.photo);
 
     // Create submit data with only filled fields
     const submitData: any = {};
@@ -165,13 +238,16 @@ export default function ProfileCreationPage() {
 
       // Show success message
       setSuccess('Profile updated successfully!');
+      setShowToast(true);
       setError(''); // Clear any previous errors
 
-      // Close modal and clear success message after 3 seconds
+      // Close after 1s and return to profile page
       setTimeout(() => {
+        setShowToast(false);
         setSuccess('');
         setShowEditModal(false);
-      }, 3000);
+        navigate('/profile-creation', { replace: true });
+      }, 1000);
 
       // Handle success (e.g., show success message, redirect)
     } catch (error) {
@@ -196,6 +272,14 @@ export default function ProfileCreationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto py-8 px-4">
+        {/* Success Toast */}
+        {showToast && success && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-green-600 text-white px-4 py-2 rounded-md shadow-lg">
+              {success}
+            </div>
+          </div>
+        )}
         {/* Profile Header */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header with Edit Icon */}
@@ -232,8 +316,33 @@ export default function ProfileCreationPage() {
                 {/* Profile Photo */}
                 <div className="relative">
                   {formData.photo ? (
-                    <div className="w-28 h-28 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
-                      <span className="text-gray-500 text-sm">Photo</span>
+                    <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg relative group">
+                      <img 
+                        src={formData.photo} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Main profile image load error:', e.currentTarget.src);
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                        onLoad={() => {
+                          console.log('Main profile image loaded successfully:', formData.photo);
+                        }}
+                      />
+                      <div className="hidden w-full h-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-gray-500 text-sm">Photo</span>
+                      </div>
+                      {/* Remove photo button */}
+                      <button
+                        onClick={handleRemovePhoto}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity duration-200 shadow-lg"
+                        title="Remove photo"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
                   ) : (
                     <div className="w-28 h-28 rounded-full bg-white bg-opacity-30 flex items-center justify-center border-4 border-white shadow-lg">
@@ -288,7 +397,7 @@ export default function ProfileCreationPage() {
               <button
                 onClick={() => {
                   // Handle logout
-                  localStorage.removeItem('token');
+                  localStorage.removeItem('authToken');
                   navigate('/login');
                 }}
                 className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
@@ -307,11 +416,9 @@ export default function ProfileCreationPage() {
               </button>
 
               <button
-                onClick={() => {
-                  // Handle help center - you can navigate to a help page or show a modal
-                  alert('Help Center - Coming Soon!');
-                }}
+                onClick={() => navigate('/contact', { state: { from: 'profile' } })}
                 className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+                title="Visit Help Center"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -387,15 +494,61 @@ export default function ProfileCreationPage() {
                       Profile Photo
                     </label>
                     <div className="flex items-center space-x-4">
-                      <div>
+                      {/* Photo Preview */}
+                      <div className="flex-shrink-0">
+                        {formData.photo ? (
+                          <div className="relative group">
+                            <img 
+                              src={formData.photo} 
+                              alt="Profile preview" 
+                              className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
+                              onError={(e) => {
+                                console.error('Image load error:', e.currentTarget.src);
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                              onLoad={() => {
+                                console.log('Image loaded successfully:', formData.photo);
+                              }}
+                            />
+                            <div className="hidden w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
+                              <span className="text-gray-500 text-xs">Photo</span>
+                            </div>
+                            {/* Remove button */}
+                            <button
+                              type="button"
+                              onClick={handleRemovePhoto}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity duration-200 shadow-lg"
+                              title="Remove photo"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Upload Input */}
+                      <div className="flex-1">
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handlePhotoUpload}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          disabled={!apiService.getAuthToken()}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                          Upload a profile photo (JPG, PNG, GIF) - Preview shown above
+                          Upload a profile photo (JPG, PNG, GIF) - Max 5MB
+                          {!apiService.getAuthToken() && (
+                            <span className="text-red-500 block mt-1">Please log in to upload photos</span>
+                          )}
                         </p>
                       </div>
                     </div>

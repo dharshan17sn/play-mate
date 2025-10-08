@@ -55,6 +55,79 @@ const TournamentDetailsPage: React.FC = () => {
   const [soloTeamTitle, setSoloTeamTitle] = useState('');
   const [teamDetailsById, setTeamDetailsById] = useState<Record<string, any>>({});
 
+  // Download functions for tournament creator
+  const downloadTeamsData = (format: 'csv' | 'excel') => {
+    if (!tournament?.teams) return;
+
+    const completedTeams = tournament.teams.filter(team => {
+      const memberCount = getTeamMemberCount(team);
+      return memberCount >= (tournament.noOfPlayersPerTeam || 1);
+    });
+
+    if (completedTeams.length === 0) {
+      alert('No completed teams found to download.');
+      return;
+    }
+
+    // Prepare data
+    const maxPlayers = Math.max(...completedTeams.map(team => getTeamMemberCount(team)));
+    const headers = ['Team Name', ...Array.from({ length: maxPlayers }, (_, i) => `Player ${i + 1}`)];
+    
+    const rows = completedTeams.map(team => {
+      const row = [team.title];
+      const members = team.members || [];
+      
+      // Add player names
+      for (let i = 0; i < maxPlayers; i++) {
+        const member = members[i];
+        const playerName = member?.user?.displayName || (member as any)?.displayName || '';
+        row.push(playerName);
+      }
+      
+      return row;
+    });
+
+    if (format === 'csv') {
+      downloadCSV(headers, rows, `${tournament.title}_teams.csv`);
+    } else {
+      downloadExcel(headers, rows, `${tournament.title}_teams.xlsx`);
+    }
+  };
+
+  const downloadCSV = (headers: string[], rows: string[][], filename: string) => {
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadExcel = (headers: string[], rows: string[][], filename: string) => {
+    // For now, we'll create a CSV file with .xlsx extension
+    // In a real implementation, you'd use a library like xlsx
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join('\t'))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Safely derive team member count across different API shapes
   const getTeamMemberCount = (team: any): number => {
     const members = team?.members;
@@ -367,6 +440,39 @@ const TournamentDetailsPage: React.FC = () => {
               >
                 ← Back to Tournaments
               </button>
+              {/* Creator Actions - only show for tournament creator */}
+              {currentUserId === tournament?.creator.user_id && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleEditTournament}
+                    className="px-3 py-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md font-medium"
+                  >
+                    Edit Tournament
+                  </button>
+                  <div className="relative group">
+                    <button
+                      className="px-3 py-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md font-medium"
+                    >
+                      Download Teams
+                    </button>
+                    {/* Download dropdown */}
+                    <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <button
+                        onClick={() => downloadTeamsData('csv')}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-md"
+                      >
+                        Download CSV
+                      </button>
+                      <button
+                        onClick={() => downloadTeamsData('excel')}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-b-md"
+                      >
+                        Download Excel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => navigate('/profile-creation')}
                 className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full"
@@ -394,17 +500,44 @@ const TournamentDetailsPage: React.FC = () => {
               </svg>
             </button>
             <h1 className="text-lg font-bold text-gray-900 truncate">{tournament.title}</h1>
-            {/* Edit Button - only show for tournament creator */}
+            {/* Creator Actions - only show for tournament creator */}
             {currentUserId === tournament.creator.user_id ? (
-              <button
-                onClick={handleEditTournament}
-                className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
-                title="Edit tournament"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={handleEditTournament}
+                  className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
+                  title="Edit tournament"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <div className="relative group">
+                  <button
+                    className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                    title="Download teams data"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
+                  {/* Download dropdown */}
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <button
+                      onClick={() => downloadTeamsData('csv')}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-md"
+                    >
+                      Download CSV
+                    </button>
+                    <button
+                      onClick={() => downloadTeamsData('excel')}
+                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-b-md"
+                    >
+                      Download Excel
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="w-10"></div>
             )}
@@ -506,7 +639,7 @@ const TournamentDetailsPage: React.FC = () => {
               {/* Description */}
               {tournament.description && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Description (Rules)</h3>
                   <p className="text-gray-600">{tournament.description}</p>
                 </div>
               )}

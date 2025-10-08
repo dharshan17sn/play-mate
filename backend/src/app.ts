@@ -20,6 +20,7 @@ import friendRoutes from './routes/friendRoutes';
 import chatRoutes from './routes/chatRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import contactRoutes from './routes/contactRoutes';
 
 // Create Express app
 const app = express();
@@ -31,7 +32,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "http://localhost:*"],
     },
   },
 }));
@@ -58,6 +59,23 @@ app.use(compression());
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static file serving for uploads with CORS headers
+app.use('/uploads', (req, res, next) => {
+  // Add CORS headers for static files
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+}, express.static(config.upload.path));
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: any) => {
@@ -98,6 +116,7 @@ app.use('/api/v1/friends', friendRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/tournaments', tournamentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/contact', contactRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

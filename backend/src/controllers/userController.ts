@@ -5,6 +5,7 @@ import { asyncErrorHandler } from '../middleware/errorHandler';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { OtpService } from '../services/otpService';
 import { prisma } from '../config/database';
+import { deletePhotoFile, getPhotoUrl } from '../middleware/upload';
 
 export class UserController {
   /**
@@ -290,5 +291,97 @@ export class UserController {
     res.status(200).json(
       ResponseBuilder.success(user.teams, 'Your teams retrieved successfully')
     );
+  });
+
+  /**
+   * Upload profile photo
+   */
+  static uploadPhoto = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    console.log('Upload photo request received');
+    
+    // Handle multer errors
+    if (req.file === undefined) {
+      console.log('No file provided or multer error occurred');
+      return res.status(400).json(
+        ResponseBuilder.validationError('No photo file provided or file upload failed')
+      );
+    }
+    
+    if (!req.user) {
+      console.log('No user found in request');
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    console.log('User authenticated:', req.user.user_id);
+    console.log('File received:', req.file.filename, 'Size:', req.file.size);
+
+    try {
+      // Get current user to check for existing photo
+      console.log('Getting current user...');
+      const currentUser = await UserService.getUserById(req.user.user_id);
+      console.log('Current user photo:', currentUser.photo);
+      
+      // Delete old photo if exists
+      if (currentUser.photo && typeof currentUser.photo === 'string') {
+        console.log('Deleting old photo:', currentUser.photo);
+        deletePhotoFile(currentUser.photo);
+      }
+
+      // Update user with new photo filename
+      console.log('Updating user with new photo:', req.file.filename);
+      const updatedUser = await UserService.updateUser(req.user.user_id, {
+        photo: req.file.filename
+      });
+
+      const photoUrl = getPhotoUrl(req.file.filename);
+      console.log('Photo URL generated:', photoUrl);
+
+      res.status(200).json(
+        ResponseBuilder.success(
+          { photoUrl, photo: req.file.filename },
+          'Photo uploaded successfully'
+        )
+      );
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      res.status(500).json(
+        ResponseBuilder.error('Failed to upload photo', error instanceof Error ? error.message : 'Unknown error')
+      );
+    }
+  });
+
+  /**
+   * Remove profile photo
+   */
+  static removePhoto = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json(
+        ResponseBuilder.unauthorized('User not authenticated')
+      );
+    }
+
+    try {
+      // Get current user to check for existing photo
+      const currentUser = await UserService.getUserById(req.user.user_id);
+      
+      // Delete photo file if exists
+      if (currentUser.photo && typeof currentUser.photo === 'string') {
+        deletePhotoFile(currentUser.photo);
+      }
+
+      // Update user to remove photo
+      const updatedUser = await UserService.updateUser(req.user.user_id, {
+        photo: undefined
+      });
+
+      res.status(200).json(
+        ResponseBuilder.success(null, 'Photo removed successfully')
+      );
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      throw error;
+    }
   });
 }

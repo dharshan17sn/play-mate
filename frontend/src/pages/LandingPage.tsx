@@ -43,8 +43,8 @@ const LandingPage: React.FC = () => {
                 id="home"
                 className="hero-section relative h-screen overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 md:bg-transparent"
             >
-                {/* Desktop background via HTML (hidden on mobile) */}
-                <div className="hidden md:block absolute inset-0 z-0">
+                {/* Desktop background via HTML (hidden on mobile/tablet; shown on lg+) */}
+                <div className="hidden lg:block absolute inset-0 z-0">
                     <iframe
                         src="/2.html"
                         title="Background"
@@ -139,7 +139,14 @@ const LandingPage: React.FC = () => {
             <section id="about" className="py-20 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div>
+                        <div className="hidden md:flex justify-end">
+                            <img
+                                src="/images/image.png"
+                                alt="About Play-Mate"
+                                className="w-full max-w-sm md:max-h-72 h-auto rounded-2xl shadow-md object-cover"
+                            />
+                        </div>
+                        <div className="text-center md:text-left">
                             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                                 About Play-Mate
                             </h2>
@@ -158,11 +165,6 @@ const LandingPage: React.FC = () => {
                                 Learn More About Us
                             </button>
                         </div>
-                        {/* <div className="text-center">
-                            <div className="bg-gray-200 w-full h-64 rounded-lg flex items-center justify-center">
-                                <p className="text-gray-500">Background Image Placeholder</p>
-                            </div>
-                        </div> */}
                     </div>
                 </div>
             </section>
@@ -261,17 +263,17 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-semibold mb-4">Support</h4>
                             <ul className="space-y-2 text-gray-400">
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Help Center</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Contact Us</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">FAQ</a></li>
+                                {/* <li><a href="#" className="hover:text-white transition-colors duration-200">Help Center</a></li> */}
+                                <li><a href="/contact" className="hover:text-white transition-colors duration-200">Contact Us</a></li>
+                                <li><a href="#contact" className="hover:text-white transition-colors duration-200">FAQ</a></li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="font-semibold mb-4">Legal</h4>
                             <ul className="space-y-2 text-gray-400">
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Privacy Policy</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Terms of Service</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors duration-200">Cookie Policy</a></li>
+                                <li><a href="/privacy" className="hover:text-white transition-colors duration-200">Privacy Policy</a></li>
+                                <li><a href="/terms" className="hover:text-white transition-colors duration-200">Terms of Service</a></li>
+                                <li><a href="/cookies" className="hover:text-white transition-colors duration-200">Cookie Policy</a></li>
                             </ul>
                         </div>
                     </div>

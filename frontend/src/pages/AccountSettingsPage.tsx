@@ -83,7 +83,7 @@ const AccountSettingsPage: React.FC = () => {
             const response = await apiService.deleteAccount(userId);
             if (response.success) {
                 // Clear local storage and redirect to login
-                localStorage.removeItem('token');
+                localStorage.removeItem('authToken');
                 navigate('/login');
             } else {
                 setDeleteError(response.message || 'Failed to delete account');

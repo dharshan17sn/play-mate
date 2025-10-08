@@ -27,7 +27,7 @@ const Navbar: React.FC = () => {
     return (
         <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled
             ? 'bg-white shadow-lg'
-            : 'bg-transparent'
+            : 'bg-gradient-to-b from-indigo-900/90 to-transparent'
             }`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
@@ -69,15 +69,15 @@ const Navbar: React.FC = () => {
                             >
                                 About Us
                             </a>
-                            <a
-                                href="#contact"
+                            <button
+                                onClick={() => navigate('/contact', { state: { from: 'landing' } })}
                                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isScrolled
                                     ? 'text-gray-700 hover:text-blue-600'
                                     : 'text-purple-200 hover:text-purple-100'
                                     }`}
                             >
                                 Contact / Support
-                            </a>
+                            </button>
                         </div>
                     </div>
 

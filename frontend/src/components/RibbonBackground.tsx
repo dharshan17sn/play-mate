@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 
 const gradients: string[] = [
-  'linear-gradient(90deg,#ff6a88,#5ee7df)',
-  'linear-gradient(90deg,#7a6cff,#3ad59f)',
-  'linear-gradient(90deg,#ffd86b,#ff6a88)',
-  'linear-gradient(90deg,#4facfe,#00f2fe)',
-  'linear-gradient(90deg,#f093fb,#f5576c)',
-  'linear-gradient(90deg,#43e97b,#38f9d7)',
-  'linear-gradient(90deg,#fa709a,#fee140)'
+  'linear-gradient(90deg,#00c6ff,#0072ff)',
+  'linear-gradient(90deg,#36d1dc,#5b86e5)',
+  'linear-gradient(90deg,#f83600,#f9d423)',
+  'linear-gradient(90deg,#ff512f,#dd2476)',
+  'linear-gradient(90deg,#00b09b,#96c93d)',
+  'linear-gradient(90deg,#fc466b,#3f5efb)',
+  'linear-gradient(90deg,#ee0979,#ff6a00)'
 ];
 
 function overlaps(rect: { left: number; top: number; right: number; bottom: number }, others: Array<{ left: number; top: number; right: number; bottom: number }>) {
@@ -16,8 +16,8 @@ function overlaps(rect: { left: number; top: number; right: number; bottom: numb
 
 function randomBlob(ribbon: HTMLDivElement, placedRects: Array<{ left: number; top: number; right: number; bottom: number }>) {
   const grad = gradients[Math.floor(Math.random() * gradients.length)];
-  const w = 15 + Math.random() * 25; // vw
-  const h = 15 + Math.random() * 25; // vh
+  const w = 18 + Math.random() * 28; // slightly larger for more presence
+  const h = 18 + Math.random() * 28;
 
   const shapes = [
     '50%',

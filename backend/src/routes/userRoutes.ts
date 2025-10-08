@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { UserController } from '../controllers/userController';
 import { authenticateToken, optionalAuth } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
+import { uploadPhoto } from '../middleware/upload';
 import {
   userLoginSchema,
   userUpdateSchema,
@@ -356,6 +357,78 @@ router.get('/profile', authenticateToken, UserController.getProfile);
  *                   example: "Games not found: InvalidGame, AnotherInvalidGame"
  */
 router.put('/profile', authenticateToken, validateRequest(userUpdateSchema), UserController.updateProfile);
+
+/**
+ * @openapi
+ * /api/v1/users/upload-photo:
+ *   post:
+ *     summary: Upload profile photo
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [photo]
+ *             properties:
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Profile photo image file
+ *     responses:
+ *       200:
+ *         description: Photo uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Photo uploaded successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     photoUrl:
+ *                       type: string
+ *                       example: "/uploads/photo-1234567890-123456789.jpg"
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/upload-photo', authenticateToken, uploadPhoto.single('photo'), UserController.uploadPhoto);
+
+/**
+ * @openapi
+ * /api/v1/users/remove-photo:
+ *   delete:
+ *     summary: Remove profile photo
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Photo removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Photo removed successfully"
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete('/remove-photo', authenticateToken, UserController.removePhoto);
 
 /**
  * @openapi

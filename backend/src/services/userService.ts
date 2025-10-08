@@ -8,6 +8,7 @@ import {
   AuthenticationError,
   ValidationError
 } from '../utils/errors';
+import { getPhotoUrl } from '../middleware/upload';
 import { logger } from '../utils/logger';
 
 export interface CreateUserData {
@@ -185,6 +186,11 @@ export class UserService {
 
       if (!user) {
         throw new NotFoundError('User not found');
+      }
+
+      // Convert photo filename to proper URL
+      if (user.photo && typeof user.photo === 'string') {
+        (user as any).photo = getPhotoUrl(user.photo);
       }
 
       return user;
@@ -447,6 +453,9 @@ export class UserService {
 
         // Remove preferred games
         await tx.userGame.deleteMany({ where: { userId: user_id } });
+
+        // Delete notifications for the user
+        await tx.notification.deleteMany({ where: { userId: user_id } });
 
         // Delete tournaments created by the user and their dependents
         const tournaments = await tx.tournament.findMany({

@@ -333,15 +333,13 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (activeTab === "messages" && selectedChatId) {
-      navigate(`/chat/c/${encodeURIComponent(selectedChatId)}`, {
-        replace: true,
-      });
+      navigate(`/chat/c/${encodeURIComponent(selectedChatId)}`, { replace: true });
     } else if (activeTab === "teams" && selectedTeamId) {
-      navigate(`/chat/t/${encodeURIComponent(selectedTeamId)}`, {
-        replace: true,
-      });
+      navigate(`/chat/t/${encodeURIComponent(selectedTeamId)}`, { replace: true });
     } else if (!selectedChatId && !selectedTeamId) {
-      navigate(`/chat`, { replace: true });
+      // Preserve tab in URL when nothing is selected
+      const dest = activeTab === "teams" ? "/chat?tab=teams" : "/chat";
+      navigate(dest, { replace: true });
     }
   }, [activeTab, selectedChatId, selectedTeamId]);
 
@@ -586,11 +584,10 @@ export default function ChatPage() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         if (selectedChatId || selectedTeamId) {
+          const isTeam = !!selectedTeamId;
           setSelectedChatId(null);
-
           setSelectedTeamId(null);
-
-          navigate("/chat", { replace: true });
+          navigate(isTeam ? "/chat?tab=teams" : "/chat", { replace: true });
         }
       }
     }
@@ -1476,9 +1473,10 @@ export default function ChatPage() {
 
                   <button
                     onClick={() => {
+                      const isTeam = !!selectedTeamId;
                       setSelectedChatId(null);
                       setSelectedTeamId(null);
-                      navigate("/chat", { replace: true });
+                      navigate(isTeam ? "/chat?tab=teams" : "/chat", { replace: true });
                     }}
                     style={{
                       display: isMobile ? "inline-flex" : "none",
@@ -1778,12 +1776,16 @@ export default function ChatPage() {
                     borderRadius: 6,
                     width: 28,
                     height: 28,
-                    lineHeight: "26px",
-                    textAlign: "center",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    display: "inline-flex",
                     cursor: "pointer",
                   }}
+                  aria-label="Back"
                 >
-                  {"←"}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: "#111827" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
 
                 <span style={{ fontWeight: 700 }}>Team Info</span>
@@ -1823,6 +1825,7 @@ export default function ChatPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
                   {teamDetails.photo ? (
@@ -1858,6 +1861,7 @@ export default function ChatPage() {
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
+                        flexShrink: 0,
                       }}
                     >
                       {isEditingTeamTitle ? (
@@ -3341,11 +3345,7 @@ export default function ChatPage() {
 
                     reader.readAsDataURL(file);
                   }}
-                  style={{
-                    border: "1px solid #ddd",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
 
                 <div style={{ fontSize: 12, color: "#6b7280" }}>
