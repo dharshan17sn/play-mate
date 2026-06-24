@@ -384,4 +384,30 @@ export class UserController {
       throw error;
     }
   });
+
+  /**
+   * Get system database statistics (admin only)
+   */
+  static getSystemStats = asyncErrorHandler(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const [usersCount, gamesCount, teamsCount, tournamentsCount] = await Promise.all([
+        prisma.user.count(),
+        prisma.game.count(),
+        prisma.team.count(),
+        prisma.tournament.count(),
+      ]);
+
+      res.status(200).json(
+        ResponseBuilder.success({
+          users: usersCount,
+          games: gamesCount,
+          teams: teamsCount,
+          tournaments: tournamentsCount,
+        }, 'System statistics retrieved successfully')
+      );
+    } catch (error) {
+      console.error('Error fetching system stats:', error);
+      throw error;
+    }
+  });
 }

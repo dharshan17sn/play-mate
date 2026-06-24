@@ -21,6 +21,7 @@ import TournamentCreationPage from './pages/TournamentCreationPage';
 import TournamentDetailsPage from './pages/TournamentDetailsPage';
 import TournamentEditPage from './pages/TournamentEditPage';
 import TeamInvitePage from './pages/TeamInvitePage';
+import AdminPage from './pages/AdminPage';
 import { apiService } from './services/api';
 
 // Protected Route component
@@ -167,6 +168,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TournamentEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />

@@ -38,15 +38,6 @@ const ForgotPasswordPage: React.FC = () => {
     if (error) setError('');
   };
 
-  const handleOtpInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setOtpData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    if (error) setError('');
-  };
-
   const handleResetInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setResetData(prev => ({

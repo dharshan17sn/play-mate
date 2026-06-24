@@ -1,12 +1,12 @@
 import { io, type Socket } from 'socket.io-client';
-import { apiService } from './api';
+import { apiService, SERVER_BASE_URL } from './api';
 
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
     if (socket && socket.connected) return socket;
     const token = apiService.getAuthToken();
-    socket = io('http://localhost:3000', {
+    socket = io(SERVER_BASE_URL, {
         transports: ['websocket', 'polling'],
         auth: { token },
         autoConnect: true,

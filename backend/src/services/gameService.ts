@@ -4,6 +4,7 @@ import {
   ConflictError
 } from '../utils/errors';
 import { logger } from '../utils/logger';
+import { deletePhotoFile } from '../middleware/upload';
 
 export interface CreateGameData {
   name: string;
@@ -43,6 +44,24 @@ export class GameService {
       return game;
     } catch (error) {
       logger.error('Error creating game:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update game banner
+   */
+  static async updateGameBanner(name: string, banner: string | null) {
+    try {
+      const standardizedName = this.normalizeGameName(name);
+      const game = await prisma.game.update({
+        where: { name: standardizedName },
+        data: { banner }
+      });
+      logger.info(`Game banner updated: ${game.name} -> ${banner}`);
+      return game;
+    } catch (error) {
+      logger.error(`Error updating game banner for ${name}:`, error);
       throw error;
     }
   }
@@ -187,6 +206,12 @@ export class GameService {
         // Finally delete the game
         await tx.game.delete({ where: { name: gameName } });
       });
+
+      // Delete game banner file if it exists
+      if (game.banner) {
+        deletePhotoFile(game.banner);
+      }
+
       logger.info(`Game deleted: ${gameName}`);
       return { deleted: true };
     } catch (error) {

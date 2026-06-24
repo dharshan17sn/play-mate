@@ -1,5 +1,6 @@
-const API_BASE_URL = 'http://localhost:3000/api/v1';
-const SERVER_BASE_URL = 'http://localhost:3000';
+export const SERVER_BASE_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:4000';
+export const API_BASE_URL = `${SERVER_BASE_URL}/api/v1`;
+
 
 export interface LoginRequest {
   identifier: string;
@@ -52,8 +53,9 @@ export interface ResetPasswordRequest {
 }
 
 export interface Game {
-  id: string;
+  id?: string;
   name: string;
+  banner?: string;
 }
 
 export interface ApiResponse {
@@ -295,11 +297,20 @@ class ApiService {
   async getGames(): Promise<Game[]> {
     try {
       const response = await this.request<ApiResponse>('/games');
-      // The API returns a paginated response with games in response.data.data
+      
+      const fixGameBanners = (gamesArray: any[]) => {
+        return gamesArray.map((game: any) => {
+          if (game.banner && !game.banner.startsWith('http')) {
+            game.banner = `${SERVER_BASE_URL}/uploads/${game.banner}`;
+          }
+          return game;
+        });
+      };
+
       if (response.data && Array.isArray(response.data)) {
-        return response.data;
+        return fixGameBanners(response.data);
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        return response.data.data;
+        return fixGameBanners(response.data.data);
       }
       return [];
     } catch (error) {
@@ -497,16 +508,24 @@ class ApiService {
     const response = await this.requestWithAuth<ApiResponse>(endpoint);
     
     // Fix photo URLs for teams
-    if (response.data && Array.isArray(response.data)) {
-      response.data = response.data.map((team: any) => {
-        if (team.photo) {
+    const fixTeamPhotos = (teamsArray: any[]) => {
+      return teamsArray.map((team: any) => {
+        if (team.photo && !team.photo.startsWith('http')) {
           team.photo = `${SERVER_BASE_URL}${team.photo}`;
         }
-        if (team.creator && team.creator.photo) {
+        if (team.creator && team.creator.photo && !team.creator.photo.startsWith('http')) {
           team.creator.photo = `${SERVER_BASE_URL}${team.creator.photo}`;
         }
         return team;
       });
+    };
+
+    if (response.data) {
+      if (Array.isArray(response.data)) {
+        response.data = fixTeamPhotos(response.data);
+      } else if (response.data.teams && Array.isArray(response.data.teams)) {
+        response.data.teams = fixTeamPhotos(response.data.teams);
+      }
     }
     
     return response;
@@ -555,6 +574,78 @@ class ApiService {
   // Helper method to check if user is authenticated
   isAuthenticated(): boolean {
     return !!this.getAuthToken();
+  }
+
+  // Helper method to check if authenticated user is admin
+  isAdmin(): boolean {
+    const token = this.getAuthToken();
+    if (!token) return false;
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    try {
+      const payload = JSON.parse(atob(parts[1]));
+      return !!payload?.isAdmin;
+    } catch {
+      return false;
+    }
+  }
+
+  // Get administrative database statistics
+  async getAdminStats(): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>('/users/admin/stats');
+  }
+
+  // Create a new game
+  async createGame(name: string): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>('/games', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+  }
+
+  // Delete a game
+  async deleteGame(name: string, force: boolean = true): Promise<ApiResponse> {
+    return this.requestWithAuth<ApiResponse>('/games/delete', {
+      method: 'POST',
+      body: JSON.stringify({ name, force })
+    });
+  }
+
+  // Upload game background banner
+  async uploadGameBanner(gameName: string, file: File): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('banner', file);
+
+      const token = this.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/games/${encodeURIComponent(gameName)}/banner`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload game banner';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error uploading game banner:', error);
+      throw error;
+    }
   }
 
   // Team join and members endpoints

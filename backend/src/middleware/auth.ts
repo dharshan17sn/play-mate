@@ -10,6 +10,7 @@ export interface AuthenticatedRequest extends Request {
     user_id: string;
     email: string;
     displayName: string;
+    isAdmin: boolean;
   };
 }
 
@@ -42,7 +43,7 @@ export const authenticateToken = async (
     // Verify user still exists in database
     const user = await prisma.user.findUnique({
       where: { user_id: decoded.userId },
-      select: { user_id: true, email: true, displayName: true },
+      select: { user_id: true, email: true, displayName: true, isAdmin: true },
     });
 
     console.log('Auth - User found:', user);
@@ -97,6 +98,21 @@ export const requireRole = (roles: string[]) => {
   };
 };
 
+export const requireAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      throw new AuthorizationError('Admin privileges required');
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const optionalAuth = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -112,7 +128,7 @@ export const optionalAuth = async (
       if (decoded.userId) {
         const user = await prisma.user.findUnique({
           where: { user_id: decoded.userId },
-          select: { user_id: true, email: true, displayName: true },
+          select: { user_id: true, email: true, displayName: true, isAdmin: true },
         });
 
         if (user) {

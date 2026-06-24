@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { GameController } from '../controllers/gameController';
-import { validateRequest, gameDeleteSchema } from '../middleware/validation';
-import {
-  gameCreateSchema,
-} from '../middleware/validation';
+import { validateRequest, gameDeleteSchema, gameCreateSchema } from '../middleware/validation';
+import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { uploadPhoto } from '../middleware/upload';
 
 const router = Router();
 
@@ -75,7 +74,7 @@ router.get('/:name', GameController.getGameById);
  *       409:
  *         description: Conflict (existing references)
  */
-router.post('/delete', validateRequest(gameDeleteSchema), GameController.deleteGame);
+router.post('/delete', authenticateToken, requireAdmin, validateRequest(gameDeleteSchema), GameController.deleteGame);
 
 /**
  * @openapi
@@ -98,8 +97,9 @@ router.post('/delete', validateRequest(gameDeleteSchema), GameController.deleteG
  *       409:
  *         description: Conflict
  */
-// Admin routes (no authentication for now, but could be added later)
-router.post('/', validateRequest(gameCreateSchema), GameController.createGame);
+// Admin routes (requires authentication and admin privilege)
+router.post('/', authenticateToken, requireAdmin, validateRequest(gameCreateSchema), GameController.createGame);
+router.post('/:name/banner', authenticateToken, requireAdmin, uploadPhoto.single('banner'), GameController.uploadGameBanner);
 
 /**
  * @openapi

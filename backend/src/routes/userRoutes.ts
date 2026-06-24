@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/userController';
-import { authenticateToken, optionalAuth } from '../middleware/auth';
+import { authenticateToken, optionalAuth, requireAdmin } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import { uploadPhoto } from '../middleware/upload';
 import {
@@ -203,6 +203,7 @@ router.get('/', validateRequest(paginationSchema), validateRequest(userSearchSch
  *       200: { description: OK }
  */
 router.get('/profile', authenticateToken, UserController.getProfile);
+router.get('/admin/stats', authenticateToken, requireAdmin, UserController.getSystemStats);
 
 /**
  * @openapi

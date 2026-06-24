@@ -35,6 +35,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:", "http://localhost:*"],
     },
   },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // CORS configuration - allow Authorization header and common localhost dev origins
@@ -94,8 +95,8 @@ app.get('/api/openapi.json', (req: Request, res: Response) => {
 });
 
 // Log that docs are being served
-console.log('📚 API Documentation available at: http://localhost:3000/api/docs');
-console.log('📄 OpenAPI JSON available at: http://localhost:3000/api/openapi.json');
+console.log(`📚 API Documentation available at: http://localhost:${config.port}/api/docs`);
+console.log(`📄 OpenAPI JSON available at: http://localhost:${config.port}/api/openapi.json`);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

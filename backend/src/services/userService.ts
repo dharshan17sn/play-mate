@@ -121,6 +121,7 @@ export class UserService {
           email: true,
           passwordHash: true,
           displayName: true,
+          isAdmin: true,
         },
       });
 
@@ -136,7 +137,7 @@ export class UserService {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.user_id },
+        { userId: user.user_id, isAdmin: user.isAdmin },
         config.jwt.secret as string,
       );
 
@@ -146,6 +147,7 @@ export class UserService {
           user_id: user.user_id,
           email: user.email,
           displayName: user.displayName,
+          isAdmin: user.isAdmin,
         },
         token,
       };
@@ -295,6 +297,10 @@ export class UserService {
         },
       });
 
+      if (updatedUser && updatedUser.photo && typeof updatedUser.photo === 'string') {
+        (updatedUser as any).photo = getPhotoUrl(updatedUser.photo);
+      }
+
       logger.info(`User updated: ${user_id}`);
       return updatedUser;
     } catch (error) {
@@ -412,8 +418,15 @@ export class UserService {
         prisma.user.count({ where }),
       ]);
 
+      const mappedUsers = users.map((user) => {
+        if (user.photo && typeof user.photo === 'string') {
+          (user as any).photo = getPhotoUrl(user.photo);
+        }
+        return user;
+      });
+
       return {
-        users,
+        users: mappedUsers,
         pagination: {
           page,
           limit,

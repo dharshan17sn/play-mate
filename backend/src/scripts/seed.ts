@@ -84,24 +84,24 @@ async function main() {
         data: {
           title: 'CS2 Elite',
           description: 'Professional Counter-Strike 2 team',
-          creatorId: users[0].id,
-          gameId: games[0].id,
+          creatorId: users[0].user_id,
+          gameName: games[0].name,
         },
       }),
       prisma.team.create({
         data: {
           title: 'Valorant Warriors',
           description: 'Competitive Valorant team',
-          creatorId: users[1].id,
-          gameId: games[1].id,
+          creatorId: users[1].user_id,
+          gameName: games[1].name,
         },
       }),
       prisma.team.create({
         data: {
           title: 'LoL Champions',
           description: 'League of Legends champions',
-          creatorId: users[2].id,
-          gameId: games[2].id,
+          creatorId: users[2].user_id,
+          gameName: games[2].name,
         },
       }),
     ]);
@@ -112,28 +112,28 @@ async function main() {
     await Promise.all([
       prisma.teamMember.create({
         data: {
-          userId: users[0].id,
+          userId: users[0].user_id,
           teamId: teams[0].id,
           status: 'ACCEPTED',
         },
       }),
       prisma.teamMember.create({
         data: {
-          userId: users[1].id,
+          userId: users[1].user_id,
           teamId: teams[0].id,
           status: 'ACCEPTED',
         },
       }),
       prisma.teamMember.create({
         data: {
-          userId: users[2].id,
+          userId: users[2].user_id,
           teamId: teams[1].id,
           status: 'ACCEPTED',
         },
       }),
       prisma.teamMember.create({
         data: {
-          userId: users[3].id,
+          userId: users[3].user_id,
           teamId: teams[1].id,
           status: 'PENDING',
         },
@@ -148,8 +148,8 @@ async function main() {
         data: {
           title: 'CS2 Championship 2024',
           description: 'Annual Counter-Strike 2 tournament',
-          creatorId: users[0].id,
-          gameId: games[0].id,
+          creatorId: users[0].user_id,
+          gameId: games[0].name,
           startDate: new Date('2024-06-15'),
           location: 'Online',
         },
@@ -158,8 +158,8 @@ async function main() {
         data: {
           title: 'Valorant Masters',
           description: 'Valorant masters tournament',
-          creatorId: users[1].id,
-          gameId: games[1].id,
+          creatorId: users[1].user_id,
+          gameId: games[1].name,
           startDate: new Date('2024-07-20'),
           location: 'Los Angeles, CA',
         },
@@ -174,14 +174,14 @@ async function main() {
         data: {
           tournamentId: tournaments[0].id,
           teamId: teams[0].id,
-          users: { connect: [{ id: users[0].id }, { id: users[1].id }] },
+          users: { connect: [{ user_id: users[0].user_id }, { user_id: users[1].user_id }] },
         },
       }),
       prisma.tournamentTeam.create({
         data: {
           tournamentId: tournaments[1].id,
           teamId: teams[1].id,
-          users: { connect: [{ id: users[2].id }] },
+          users: { connect: [{ user_id: users[2].user_id }] },
         },
       }),
     ]);
@@ -191,8 +191,8 @@ async function main() {
     // Create invitations
     await prisma.invitation.create({
       data: {
-        fromUserId: users[0].id,
-        toUserId: users[3].id,
+        fromUserId: users[0].user_id,
+        toUserId: users[3].user_id,
         teamId: teams[0].id,
         status: 'PENDING',
       },
@@ -204,14 +204,14 @@ async function main() {
     await Promise.all([
       prisma.message.create({
         data: {
-          senderId: users[0].id,
+          senderId: users[0].user_id,
           teamId: teams[0].id,
           content: 'Welcome to CS2 Elite! Let\'s practice tonight.',
         },
       }),
       prisma.message.create({
         data: {
-          senderId: users[1].id,
+          senderId: users[1].user_id,
           teamId: teams[0].id,
           content: 'Great! I\'m ready to practice.',
         },
@@ -224,20 +224,20 @@ async function main() {
     await Promise.all([
       prisma.userGame.create({
         data: {
-          userId: users[0].id,
-          gameId: games[0].id,
+          userId: users[0].user_id,
+          gameName: games[0].name,
         },
       }),
       prisma.userGame.create({
         data: {
-          userId: users[1].id,
-          gameId: games[1].id,
+          userId: users[1].user_id,
+          gameName: games[1].name,
         },
       }),
       prisma.userGame.create({
         data: {
-          userId: users[2].id,
-          gameId: games[2].id,
+          userId: users[2].user_id,
+          gameName: games[2].name,
         },
       }),
     ]);

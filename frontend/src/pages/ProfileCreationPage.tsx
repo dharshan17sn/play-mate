@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/api';
+import { apiService, type Game } from '../services/api';
 
 interface UserProfile {
   user_id: string;
@@ -14,10 +14,6 @@ interface UserProfile {
   timeRange?: string[];
 }
 
-interface Game {
-  id: string;
-  name: string;
-}
 
 export default function ProfileCreationPage() {
   const navigate = useNavigate();

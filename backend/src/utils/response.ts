@@ -78,7 +78,16 @@ export class ResponseBuilder {
     return this.error(message);
   }
 
-  static validationError(message: string = 'Validation failed'): ApiResponse {
+  static validationError(message: string = 'Validation failed', errors?: any): ApiResponse {
+    return {
+      success: false,
+      message,
+      data: errors,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  static badRequest(message: string = 'Bad request'): ApiResponse {
     return this.error(message);
   }
 

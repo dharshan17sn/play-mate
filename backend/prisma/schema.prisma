@@ -48,6 +48,8 @@ model User {
   location     String?
   preferredDays DayOfWeek[] @default([])
   timeRange    String[] @default([]) // Array of time ranges in format "HH:MM-HH:MM" e.g., ["18:00-22:00", "06:00-10:00"]
+  isAdmin      Boolean  @default(false)
+
 
   // relations
   teams               TeamMember[]
@@ -74,6 +76,7 @@ model User {
 
 model Game {
   name        String       @id
+  banner      String?
   teams       Team[]
   users       UserGame[]
   tournaments Tournament[]

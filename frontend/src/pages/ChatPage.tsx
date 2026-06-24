@@ -172,7 +172,7 @@ export default function ChatPage() {
   );
 
   // Resolve teamMemberId by userId if needed (for stale/partial data)
-
+  /*
   const resolveTeamMemberId = async (
     teamId: string,
     member: any
@@ -202,9 +202,10 @@ export default function ChatPage() {
       return null;
     }
   };
+  */
 
   // Choose best identifier for member API calls
-
+  /*
   const getMemberIdentifier = (member: any): string | null => {
     return (
       member?.id ||
@@ -214,6 +215,8 @@ export default function ChatPage() {
       null
     );
   };
+  */
+
 
   // Search state
 

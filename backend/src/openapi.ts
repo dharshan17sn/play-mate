@@ -9,7 +9,7 @@ export const openapiSpec = swaggerJSDoc({
       description: 'OpenAPI specification for Play‑Mate backend',
     },
     servers: [
-      { url: 'http://localhost:3000' },
+      { url: 'http://localhost:4000' }, //changed port to 4000
     ],
     components: {
       securitySchemes: {

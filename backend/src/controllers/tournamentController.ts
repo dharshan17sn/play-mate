@@ -48,9 +48,13 @@ export class TournamentController {
     });
 
     res.status(200).json(
-      ResponseBuilder.success(result.tournaments, 'Tournaments retrieved successfully', {
-        pagination: result.pagination,
-      })
+      ResponseBuilder.paginated(
+        result.tournaments,
+        result.pagination.page,
+        result.pagination.limit,
+        result.pagination.total,
+        'Tournaments retrieved successfully'
+      )
     );
   });
 

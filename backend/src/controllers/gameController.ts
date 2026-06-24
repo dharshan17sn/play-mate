@@ -3,6 +3,7 @@ import { GameService } from '../services/gameService';
 import { logger } from '../utils/logger';
 import { ResponseBuilder } from '../utils/response';
 import { asyncErrorHandler } from '../middleware/errorHandler';
+import { deletePhotoFile } from '../middleware/upload';
 
 export class GameController {
   /**
@@ -57,6 +58,44 @@ export class GameController {
     logger.info(`Game created successfully: ${game.name}`);
     res.status(201).json(
       ResponseBuilder.created(game, 'Game created successfully')
+    );
+  });
+
+  /**
+   * Upload game background banner (admin only)
+   */
+  static uploadGameBanner = asyncErrorHandler(async (req: Request, res: Response) => {
+    const { name } = req.params;
+    const file = req.file;
+
+    if (!name) {
+      if (file) deletePhotoFile(file.filename);
+      return res.status(400).json(
+        ResponseBuilder.validationError('Game name parameter is required')
+      );
+    }
+
+    if (!file) {
+      return res.status(400).json(
+        ResponseBuilder.validationError('No banner image file uploaded')
+      );
+    }
+
+    // Retrieve existing game to check for old banner
+    const existingGame = await GameService.getGameByName(name);
+    const oldBanner = existingGame.banner;
+
+    // Save banner to database
+    const game = await GameService.updateGameBanner(name, file.filename);
+
+    // Delete old banner if existed
+    if (oldBanner) {
+      deletePhotoFile(oldBanner);
+    }
+
+    logger.info(`Game banner uploaded successfully for ${name}: ${file.filename}`);
+    res.status(200).json(
+      ResponseBuilder.success(game, 'Game banner uploaded successfully')
     );
   });
 

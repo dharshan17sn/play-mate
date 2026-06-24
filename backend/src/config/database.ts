@@ -19,6 +19,10 @@ class Database {
       ],
     });
 
+     logger.info(`Connecting to database: ${process.env.DATABASE_URL}`);
+
+     console.log(`Connecting to database: ${process.env.DATABASE_URL}`);
+
     // Log queries in development
     if (process.env.NODE_ENV === 'development') {
       this._client.$on('query', (e: Prisma.QueryEvent) => {

@@ -203,6 +203,9 @@ const DashboardPage: React.FC = () => {
                                 <button onClick={() => handleNavigate('/dashboard')} className="text-gray-700 hover:text-blue-600 font-medium">Home</button>
                                 <button onClick={() => handleNavigate('/chat')} className="text-gray-700 hover:text-blue-600 font-medium">Chats</button>
                                 <button onClick={() => handleNavigate('/tournaments')} className="text-gray-700 hover:text-blue-600 font-medium">Tournaments</button>
+                                {apiService.isAdmin() && (
+                                    <button onClick={() => handleNavigate('/admin')} className="text-indigo-600 hover:text-indigo-700 font-semibold border-l pl-4 border-gray-200">Admin Panel</button>
+                                )}
                             </nav>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -567,7 +570,7 @@ const HomeGamesSection: React.FC = () => {
             {!isLoading && !error && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                     {games.map((game, index) => {
-                        const bg = getBackgroundForGame(game.name);
+                        const bg = game.banner || getBackgroundForGame(game.name);
                         return (
                             <div
                                 onClick={() => (window.location.href = `/games/${encodeURIComponent(game.name)}`)}
